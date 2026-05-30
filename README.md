@@ -1,3 +1,4 @@
+<img width="440" height="280" alt="RAIN440-280" src="https://github.com/user-attachments/assets/adf98df7-8fb8-40fa-9450-5c3fe98a84d5" />
 # RAIN (Right-click Analyst's IOC Navigator)
 
 Named after a particularly relentless miniature dachshund, RAIN is a dedicated SOC analyst tool designed to speed up the OSINT hunting of Indicators of Compromise (IOCs). Built to eliminate the daily friction of manual copy-pasting and excessive tab switching, RAIN bridges the gap between raw web text and actionable threat intelligence.
