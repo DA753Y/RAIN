@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="datesy">
+  <title>RAIN - Settings & Customization</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #1e1e20;
+      --card-bg: #161618;
+      --card-border: #2a2a2e;
+      --primary-blue: #0c85ea;
+      --primary-dark-blue: #0b76cf;
+      --text-main: #ffffff;
+      --text-muted: #9f9fa3;
+      --text-dark: #525256;
+      --success-green: #10b981;
+      --danger-red: #ef4444;
+      --shadow-glow: 0 4px 12px rgba(12, 133, 234, 0.15);
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'Fira Code', 'Consolas', monospace;
+    }
+
+    html {
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      width: 780px;
+      height: 550px;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 0.75rem 1.5rem;
+      background-color: var(--bg-color);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 80px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-container {
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-container img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .brand-text h1 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--text-main);
+    }
+
+    .brand-text p {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .search-sim-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: #121213;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      width: 280px;
+      color: var(--text-muted);
+    }
+
+    .search-sim-wrapper input {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      width: 100%;
+      outline: none;
+    }
+
+    .system-status {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+      background-color: rgba(255, 255, 255, 0.03);
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+    }
+
+    main {
+      flex-grow: 1;
+      display: flex;
+      height: calc(550px - 80px);
+      overflow: hidden;
+    }
+
+    @media (min-width: 781px), (min-height: 551px) {
+      body {
+        width: 100vw;
+        height: 100vh;
+      }
+      main {
+        height: calc(100vh - 80px);
+      }
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: var(--bg-color);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1rem 0.75rem;
+      flex-shrink: 0;
+      height: 100%;
+    }
+
+    .sidebar-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      width: 100%;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-btn.active {
+      color: #ffffff;
+      background-color: var(--primary-blue);
+    }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--card-border);
+      padding-top: 0.75rem;
+    }
+
+    .content-area {
+      flex-grow: 1;
+      background-color: var(--card-bg);
+      padding: 1rem 1.25rem;
+      overflow-y: auto;
+      height: 100%;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    #queries {
+      overflow: hidden;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 0.15rem;
+      color: var(--text-main);
+    }
+
+    .section-description {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .editor-tabs {
+      display: flex;
+      gap: 0.35rem;
+      background-color: #121213;
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      margin-bottom: 0.75rem;
+      width: fit-content;
+    }
+
+    .editor-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .editor-tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .editor-tab-btn.active {
+      background: var(--primary-blue);
+      color: #ffffff;
+    }
+
+    .editor-container {
+      display: none;
+    }
+
+    .editor-container.active {
+      display: block;
+    }
+
+    .editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .editor-label {
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .placeholder-badge {
+      font-size: 0.7rem;
+      background-color: rgba(255, 255, 255, 0.05);
+      padding: 0.2rem 0.5rem;
+      border-radius: 5px;
+      border: 1px solid var(--card-border);
+      color: var(--primary-blue);
+      font-family: var(--font-mono);
+    }
+
+    .textarea-wrapper {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background-color: #121213;
+      overflow: hidden;
+      cursor: text;
+    }
+
+    .textarea-wrapper:focus-within {
+      border-color: var(--primary-blue);
+    }
+
+    .kql-textarea {
+      display: block;
+      width: 100%;
+      height: 200px;
+      background: transparent;
+      border: none;
+      color: #f1f5f9;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      padding: 1rem;
+      resize: none;
+      line-height: 1.5;
+      tab-size: 4;
+      outline: none;
+    }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .doc-card {
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .doc-card:hover {
+      border-color: var(--primary-blue);
+    }
+
+    .doc-card h3 {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--primary-blue);
+      margin-bottom: 0.25rem;
+    }
+
+    .doc-card code {
+      font-family: var(--font-mono);
+      color: #93c5fd;
+      background-color: rgba(12, 133, 234, 0.1);
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.75rem;
+    }
+
+    .doc-card p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .action-bar {
+      margin-top: 0.5rem;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--card-border);
+    }
+
+    .btn {
+      padding: 0.55rem 1.25rem;
+      border-radius: 6px;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid transparent;
+    }
+
+    .btn svg {
+      flex-shrink: 0;
+    }
+
+    .btn-save {
+      background: var(--primary-blue);
+      color: #ffffff;
+    }
+
+    .btn-save:hover {
+      background-color: var(--primary-dark-blue);
+    }
+
+    .btn-reset {
+      background: transparent;
+      border-color: var(--card-border);
+      color: var(--text-muted);
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-reset:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      pointer-events: none;
+    }
+
+    .toast {
+      background-color: #121213;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .toast-success {
+      border-left: 4px solid var(--success-green);
+    }
+
+    .toast-success svg {
+      color: var(--success-green);
+    }
+
+    .toast-message {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .var-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.6rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .var-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.25rem 0.4rem;
+    }
+
+    .var-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--primary-blue);
+      background-color: rgba(12, 133, 234, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 5px;
+      width: 140px;
+      text-align: center;
+      flex-shrink: 0;
+      border: 1px solid rgba(12, 133, 234, 0.15);
+    }
+
+    .var-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .tool-card {
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      gap: 0.65rem;
+      align-items: flex-start;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .tool-card:hover {
+      border-color: var(--primary-blue);
+      background-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .tool-favicon {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      background-color: #121213;
+      padding: 3px;
+      border: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .tool-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .tool-info h3 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.1rem;
+    }
+
+    .tool-info p {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    .intro-card {
+      background: linear-gradient(135deg, rgba(12, 133, 234, 0.07) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .intro-card h2 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary-blue);
+      margin-bottom: 0.5rem;
+    }
+
+    .intro-card p {
+      font-size: 0.825rem;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    .intro-card p + p {
+      margin-top: 0.75rem;
+    }
+
+    .defang-card {
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .defang-list {
+      list-style-type: none;
+      padding-left: 0.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .defang-list li {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+      position: relative;
+      padding-left: 1rem;
+    }
+
+    .defang-list li::before {
+      content: "•";
+      color: var(--primary-blue);
+      font-weight: bold;
+      display: inline-block;
+      width: 1rem;
+      margin-left: -1rem;
+    }
+
+    .defang-list code {
+      font-family: var(--font-mono);
+      color: #93c5fd;
+      background-color: rgba(12, 133, 234, 0.1);
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo-container">
+        <img src="icons/icon128.png" alt="RAIN Logo">
+      </div>
+      <div class="brand-text">
+        <h1>RAIN</h1>
+        <p>Analyst Control Center</p>
+      </div>
+    </div>
+
+    <div class="system-status">
+      <span>RAIN v1.0</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="sidebar">
+      <div class="sidebar-list">
+        <button class="nav-btn active" data-tab="about">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Documentation
+        </button>
+        <button class="nav-btn" data-tab="queries">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          KQL Templates
+        </button>
+      </div>
+      
+      <div class="sidebar-footer">
+        <button id="btn-reset" class="btn btn-reset">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          Reset Defaults
+        </button>
+      </div>
+    </div>
+
+    <div class="content-area">
+      <div id="queries" class="tab-content">
+        <h2 class="section-title">KQL Templates</h2>
+        <p class="section-description">Customize the templates injected into Defender.</p>
+        
+        <div class="editor-tabs">
+          <button class="editor-tab-btn active" data-editor="ip">IP Address</button>
+          <button class="editor-tab-btn" data-editor="domain">Domain / URL</button>
+          <button class="editor-tab-btn" data-editor="hash">File Hash</button>
+          <button class="editor-tab-btn" data-editor="account">Account / Email</button>
+          <button class="editor-tab-btn" data-editor="cve">Vulnerability (CVE)</button>
+        </div>
+
+        <div id="editor-ip" class="editor-container active">
+          <div class="editor-header">
+            <div class="editor-label">IP Address Template</div>
+            <div class="placeholder-badge">IP_VALUE</div>
+          </div>
+          <div class="textarea-wrapper">
+            <textarea id="kql-ip" class="kql-textarea" spellcheck="false" placeholder="Write custom KQL here..."></textarea>
+          </div>
+        </div>
+
+        <div id="editor-domain" class="editor-container">
+          <div class="editor-header">
+            <div class="editor-label">Domain / URL Template</div>
+            <div class="placeholder-badge">DOMAIN_VALUE</div>
+          </div>
+          <div class="textarea-wrapper">
+            <textarea id="kql-domain" class="kql-textarea" spellcheck="false" placeholder="Write custom KQL here..."></textarea>
+          </div>
+        </div>
+
+        <div id="editor-hash" class="editor-container">
+          <div class="editor-header">
+            <div class="editor-label">File Hash Template</div>
+            <div class="placeholder-badge">HASH_VALUE</div>
+          </div>
+          <div class="textarea-wrapper">
+            <textarea id="kql-hash" class="kql-textarea" spellcheck="false" placeholder="Write custom KQL here..."></textarea>
+          </div>
+        </div>
+
+        <div id="editor-account" class="editor-container">
+          <div class="editor-header">
+            <div class="editor-label">Account / Email Template</div>
+            <div class="placeholder-badge">ACCOUNT_VALUE</div>
+          </div>
+          <div class="textarea-wrapper">
+            <textarea id="kql-account" class="kql-textarea" spellcheck="false" placeholder="Write custom KQL here..."></textarea>
+          </div>
+        </div>
+
+        <div id="editor-cve" class="editor-container">
+          <div class="editor-header">
+            <div class="editor-label">Vulnerability Template</div>
+            <div class="placeholder-badge">CVE_VALUE</div>
+          </div>
+          <div class="textarea-wrapper">
+            <textarea id="kql-cve" class="kql-textarea" spellcheck="false" placeholder="Write custom KQL here..."></textarea>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button id="btn-save" class="btn btn-save">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            Save Custom Templates
+          </button>
+        </div>
+      </div>
+
+      <div id="about" class="tab-content active">
+        <div class="intro-card">
+          <h2>Welcome to RAIN</h2>
+          <p>Welcome to RAIN, the Right-click Analyst's IOC Navigator. Named after a particularly relentless miniature dachshund, it is a dedicated SOC tool designed to speed up the OSINT hunting of IOCs. Built to eliminate the friction of manual copypasting and excessive tab switching, RAIN bridges the gap between web text and actionable threat intelligence.</p>
+          <p>Simply highlight an IOC on any webpage and open your right-click context menu and RAIN automatically cleans the string and empowers you to immediately launch investigations.</p>
+        </div>
+
+        <h2 class="section-title" style="margin-top: 1.5rem;">Automatic Refanging & Cleaning</h2>
+        <p class="section-description">RAIN automatically sanitizes and refangs highlighted indicators on the fly before executing search queries. Supported refanging features include:</p>
+
+        <div class="defang-card">
+          <ul class="defang-list">
+            <li><strong>Protocol Refanging:</strong> Automatically converts defanged protocols like <code>hxxps://</code>, <code>hxxp://</code>, <code>meows://</code>, or <code>meow://</code> back to standard <code>https://</code> or <code>http://</code>.</li>
+            <li><strong>Obfuscated Dots & Colons:</strong> Replaces bracketed, parenthesized, or verbal representations of periods and colons (e.g., <code>[.]</code>, <code>(.)</code>, <code>{.}</code>, <code>[dot]</code>, <code>(dot)</code>, <code>[:]</code>, and <code>(:)</code>) with actual periods (<code>.</code>) and colons (<code>:</code>).</li>
+            <li><strong>Surrounding Trimming:</strong> Strips away accidental leading or trailing quotes, parentheses, brackets, or angle brackets (e.g., <code>"</code>, <code>'</code>, <code>[</code>, <code>]</code>, <code>(</code>, <code>)</code>, <code>&lt;</code>, <code>&gt;</code>) highlighted along with the IOC.</li>
+          </ul>
+        </div>
+
+        <h2 class="section-title" style="margin-top: 1.5rem;">Variables & Placeholders</h2>
+        <p class="section-description">Variables replaced dynamically by RAIN during queries.</p>
+        
+        <div class="var-list">
+          <div class="var-item">
+            <span class="var-badge">IP_VALUE</span>
+            <span class="var-desc">Replaces with the extracted IPv4 or IPv6 address.</span>
+          </div>
+          <div class="var-item">
+            <span class="var-badge">DOMAIN_VALUE</span>
+            <span class="var-desc">Replaces with the extracted domain name or URL.</span>
+          </div>
+          <div class="var-item">
+            <span class="var-badge">HASH_VALUE</span>
+            <span class="var-desc">Replaces with the extracted MD5, SHA-1, or SHA-256 file hash.</span>
+          </div>
+          <div class="var-item">
+            <span class="var-badge">ACCOUNT_VALUE</span>
+            <span class="var-desc">Replaces with the extracted user account name, email address, or UPN.</span>
+          </div>
+          <div class="var-item">
+            <span class="var-badge">CVE_VALUE</span>
+            <span class="var-desc">Replaces with the extracted CVE vulnerability identifier (e.g., CVE-YYYY-NNNN).</span>
+          </div>
+        </div>
+
+        <h2 class="section-title" style="margin-top: 1.5rem;">Hunting Directory</h2>
+        <p class="section-description">Integrated analyst tools and reputation engines.</p>
+
+        <div class="tools-grid">
+          <a class="tool-card" href="https://talosintelligence.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=talosintelligence.com&sz=64" alt="Cisco Talos Logo">
+            <div class="tool-info">
+              <h3>Cisco Talos</h3>
+              <p>Provides comprehensive real-time network reputation and threat intelligence.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://www.virustotal.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=virustotal.com&sz=64" alt="VirusTotal Logo">
+            <div class="tool-info">
+              <h3>VirusTotal</h3>
+              <p>Analyzes files and URLs to detect malware and share results with the security community.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://urlscan.io" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=urlscan.io&sz=64" alt="URLScan Logo">
+            <div class="tool-info">
+              <h3>URLScan.io</h3>
+              <p>Web page sandbox scanner that logs details, connections, and screenshots.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://www.abuseipdb.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=abuseipdb.com&sz=64" alt="AbuseIPDB Logo">
+            <div class="tool-info">
+              <h3>AbuseIPDB</h3>
+              <p>IP reputation database tracking reported hacking, spam, and DDoS origins.</p>
+            </div>
+          </a>
+
+          <a class="tool-card" href="https://www.shodan.io" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=shodan.io&sz=64" alt="Shodan Logo">
+            <div class="tool-info">
+              <h3>Shodan</h3>
+              <p>Search engine for internet-connected devices, open ports, and services.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://search.censys.io" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=censys.com&sz=64" alt="Censys Logo">
+            <div class="tool-info">
+              <h3>Censys</h3>
+              <p>Attacks surface platform mapping public facing hosts and SSL certificates.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://security.microsoft.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=security.microsoft.com&sz=64" alt="Microsoft Defender Logo">
+            <div class="tool-info">
+              <h3>Microsoft Defender</h3>
+              <p>Unified enterprise portal for executing advanced KQL hunting queries.</p>
+            </div>
+          </a>
+
+          <a class="tool-card" href="https://www.urlvoid.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=urlvoid.com&sz=64" alt="URLVoid Logo">
+            <div class="tool-info">
+              <h3>URLVoid</h3>
+              <p>Scans website domains against multi-engine reputation blacklists.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://mxtoolbox.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=mxtoolbox.com&sz=64" alt="MXToolbox Logo">
+            <div class="tool-info">
+              <h3>MXToolbox</h3>
+              <p>High-speed diagnostic suite for domain and IP delivery reputations.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://crt.sh" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=crt.sh&sz=64" alt="Crt.sh Logo">
+            <div class="tool-info">
+              <h3>Crt.sh</h3>
+              <p>Distributed certificate transparency log viewer to map domain sub-structures.</p>
+            </div>
+          </a>
+
+          <a class="tool-card" href="https://www.hybrid-analysis.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=hybrid-analysis.com&sz=64" alt="Hybrid Analysis Logo">
+            <div class="tool-info">
+              <h3>Hybrid Analysis</h3>
+              <p>Free automated sandbox malware analysis service running files in real-time.</p>
+            </div>
+          </a>
+
+          <a class="tool-card" href="https://otx.alienvault.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=alienvault.com&sz=64" alt="AlienVault Logo">
+            <div class="tool-info">
+              <h3>AlienVault OTX</h3>
+              <p>Collaborative crowd-sourced threat exchange database for indicator sharing.</p>
+            </div>
+          </a>
+
+          <a class="tool-card" href="https://haveibeenpwned.com" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=haveibeenpwned.com&sz=64" alt="HaveIBeenPwned Logo">
+            <div class="tool-info">
+              <h3>HaveIBeenPwned</h3>
+              <p>Leaks repository mapping historical UPN breaches and exposed credentials.</p>
+            </div>
+          </a>
+
+          <a class="tool-card" href="https://nvd.nist.gov" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=nvd.nist.gov&sz=64" alt="NIST NVD Logo">
+            <div class="tool-info">
+              <h3>NIST NVD</h3>
+              <p>National vulnerability database indexing standardized CVEs and CVSS scoring.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=cisa.gov&sz=64" alt="CISA KEV Logo">
+            <div class="tool-info">
+              <h3>CISA KEV</h3>
+              <p>Authoritative catalog prioritizing vulnerabilities actively exploited in the wild.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://cve.mitre.org" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=mitre.org&sz=64" alt="MITRE CVE Logo">
+            <div class="tool-info">
+              <h3>MITRE CVE</h3>
+              <p>Standardized international dictionary of documented vulnerabilities.</p>
+            </div>
+          </a>
+
+          <a class="tool-card" href="https://gchq.github.io/CyberChef/" target="_blank">
+            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=gchq.github.io&sz=64" alt="CyberChef Logo">
+            <div class="tool-info">
+              <h3>CyberChef</h3>
+              <p>Flexible web app Swiss Army knife for deobfuscation, encoding, and data operations.</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast-container">
+    <div id="save-toast" class="toast toast-success">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div class="toast-message">Settings saved successfully!</div>
+    </div>
+    <div id="reset-toast" class="toast toast-success" style="border-left-color: var(--primary-dark-blue);">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div class="toast-message">Templates restored to defaults!</div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
