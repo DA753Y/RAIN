@@ -1,3 +1,10 @@
+const TEMPLATE_SCHEMA_VERSION = 2;
+
+const DEFAULT_SETTINGS = {
+  floatingButton: true,
+  forceNativeMenu: true
+};
+
 const kqlTemplates = {
   ip: `// RAIN Hunt: IP Address
 let IOC = "IP_VALUE";
@@ -34,6 +41,23 @@ DeviceTvmSoftwareVulnerabilities
 | where CveId == IOC
 | project DeviceName, OSPlatform, SoftwareName, SoftwareVersion, CveId, VulnerabilitySeverityLevel
 | take 100`
+};
+
+const categoryLabels = {
+  ip: "IP Address",
+  domain: "Domain/URL",
+  hash: "File Hash",
+  account: "Account/Email",
+  cve: "Vulnerability (CVE)",
+  general: "Universal Tools"
+};
+
+const categoryShortLabels = {
+  ip: "IP",
+  domain: "Domain",
+  hash: "Hash",
+  account: "Account",
+  cve: "CVE"
 };
 
 const huntingTools = {
@@ -112,7 +136,7 @@ const huntingTools = {
     },
     {
       id: "hunt-domain-ahq",
-      title: "Hunt Domain in Defender Advanced Hunting",
+      title: "Hunt Domain in Defender AHQ",
       url: "https://security.microsoft.com/v2/advanced-hunting"
     }
   ],
@@ -181,20 +205,21 @@ const huntingTools = {
   ]
 };
 
-const pendingAHQInjections = new Map();
+const YEET_CATEGORIES = ["ip", "domain", "hash", "cve"];
 
 function cleanIOC(text) {
   if (!text) return "";
   let clean = text.trim();
-  
+
   clean = clean.replace(/\[\.\]|\(\.\)|\{\.\}|\[dot\]|\(dot\)/gi, ".");
   clean = clean.replace(/\[\:\]|\(\:\)/gi, ":");
+  clean = clean.replace(/\[@\]|\(@\)|\[at\]|\(at\)/gi, "@");
   clean = clean.replace(/^hxxps/i, "https");
   clean = clean.replace(/^hxxp/i, "http");
   clean = clean.replace(/^meows/i, "https");
   clean = clean.replace(/^meow/i, "http");
   clean = clean.replace(/^["'(<\[]+|["')>\]]+$/g, "");
-  
+
   return clean;
 }
 
@@ -223,80 +248,105 @@ function classifyIOC(text) {
   const clean = cleanIOC(text);
   if (!clean) return null;
 
-  const ipPattern = /^(?:^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$)|^(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}$/;
+  const ipv4Pattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+  const ipv6Pattern = /^(?=.*:)(?:[a-fA-F0-9]{0,4}:){1,7}[a-fA-F0-9]{0,4}$/;
   const domainPattern = /^(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/.*)?$/;
-  const md5Pattern = /^[a-fA-F0-9]{32}$/;
-  const sha1Pattern = /^[a-fA-F0-9]{40}$/;
-  const sha256Pattern = /^[a-fA-F0-9]{64}$/;
+  const hashPattern = /^(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$/;
   const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   const cvePattern = /^CVE-\d{4}-\d{4,}$/i;
 
-  if (ipPattern.test(clean)) return "ip";
+  if (ipv4Pattern.test(clean)) return "ip";
+  if (ipv6Pattern.test(clean) && (clean.match(/::/g) || []).length <= 1 && !clean.includes(":::")) return "ip";
   if (cvePattern.test(clean)) return "cve";
-  if (md5Pattern.test(clean) || sha1Pattern.test(clean) || sha256Pattern.test(clean)) return "hash";
+  if (hashPattern.test(clean)) return "hash";
   if (emailPattern.test(clean)) return "account";
   if (domainPattern.test(clean)) return "domain";
 
   return null;
 }
 
+// Escape only what breaks out of a double-quoted KQL string literal;
+// other escapes (', `) are not valid KQL sequences and would corrupt the IOC.
 function sanitizeForKql(text) {
   return text
     .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/'/g, "\\'")
-    .replace(/`/g, "\\`");
+    .replace(/"/g, '\\"');
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get("kqlTemplates", (data) => {
+  chrome.storage.local.get(["kqlTemplates", "templatesVersion", "rainSettings"], (data) => {
     if (!data.kqlTemplates) {
-      chrome.storage.local.set({ kqlTemplates: kqlTemplates });
-      console.log("RAIN: Default KQL templates initialized in storage.");
+      chrome.storage.local.set({ kqlTemplates: kqlTemplates, templatesVersion: TEMPLATE_SCHEMA_VERSION });
+    } else if (!data.templatesVersion) {
+      // One-time v1.0 -> v1.1 migration: only replace the CVE template if it is
+      // the old broken default (identified by its header comment), never a custom one.
+      const migrated = { ...data.kqlTemplates };
+      if (migrated.cve && migrated.cve.includes("// RAIN Hunt: Vulnerability (CVE)") && migrated.cve.includes("Timestamp")) {
+        migrated.cve = kqlTemplates.cve;
+      }
+      chrome.storage.local.set({ kqlTemplates: migrated, templatesVersion: TEMPLATE_SCHEMA_VERSION });
+    }
+
+    if (!data.rainSettings) {
+      chrome.storage.local.set({ rainSettings: DEFAULT_SETTINGS });
     }
   });
 
-  const categories = {
-    ip: "IP Address",
-    domain: "Domain/URL",
-    hash: "File Hash",
-    account: "Account/Email",
-    cve: "Vulnerability (CVE)",
-    general: "Universal Tools"
-  };
-
-  chrome.contextMenus.create({
-    id: "rain-root",
-    title: "RAIN - Hunt IOC",
-    contexts: ["selection"]
-  });
-
-  for (const [type, title] of Object.entries(categories)) {
+  chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
-      id: `parent-${type}`,
-      parentId: "rain-root",
-      title: title,
+      id: "rain-root",
+      title: "RAIN - Hunt IOC",
       contexts: ["selection"]
     });
 
-    if (type !== "general" && type !== "account") {
+    for (const [type, title] of Object.entries(categoryLabels)) {
       chrome.contextMenus.create({
-        id: `hunt-${type}-yeet`,
-        parentId: `parent-${type}`,
-        title: "Yeet Search (all tools)",
+        id: `parent-${type}`,
+        parentId: "rain-root",
+        title: title,
         contexts: ["selection"]
+      });
+
+      if (YEET_CATEGORIES.includes(type)) {
+        chrome.contextMenus.create({
+          id: `hunt-${type}-yeet`,
+          parentId: `parent-${type}`,
+          title: "Yeet Search (all tools)",
+          contexts: ["selection"]
+        });
+      }
+
+      huntingTools[type].forEach(tool => {
+        chrome.contextMenus.create({
+          id: tool.id,
+          parentId: `parent-${type}`,
+          title: tool.title,
+          contexts: ["selection"]
+        });
       });
     }
+  });
+});
 
-    huntingTools[type].forEach(tool => {
-      chrome.contextMenus.create({
-        id: tool.id,
-        parentId: `parent-${type}`,
-        title: tool.title,
-        contexts: ["selection"]
-      });
-    });
-  }
+// Pending Defender AHQ injections live in storage.session so they survive
+// service worker suspension while the (slow) portal tab is still loading.
+function setPendingInjection(tabId, ioc, category) {
+  chrome.storage.session.set({ [`ahq-${tabId}`]: { ioc, category } });
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status !== "complete") return;
+  const key = `ahq-${tabId}`;
+  chrome.storage.session.get(key, (data) => {
+    if (data[key]) {
+      chrome.storage.session.remove(key);
+      injectKQLQuery(tabId, data[key].ioc, data[key].category);
+    }
+  });
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.storage.session.remove(`ahq-${tabId}`);
 });
 
 function injectKQLQuery(tabId, ioc, category) {
@@ -319,12 +369,10 @@ function injectKQLQuery(tabId, ioc, category) {
     }
 
     chrome.storage.local.get("kqlTemplates", (data) => {
-      let activeTemplates = data.kqlTemplates || kqlTemplates;
-      
-      if (activeTemplates.cve && activeTemplates.cve.includes("Timestamp")) {
-        activeTemplates.cve = kqlTemplates.cve;
-        chrome.storage.local.set({ kqlTemplates: activeTemplates });
-        console.log("RAIN: Obsolete background CVE template migrated successfully.");
+      const stored = data.kqlTemplates || {};
+      const activeTemplates = {};
+      for (const key of Object.keys(kqlTemplates)) {
+        activeTemplates[key] = stored[key] || kqlTemplates[key];
       }
 
       const sanitizedIoc = sanitizeForKql(ioc);
@@ -334,7 +382,8 @@ function injectKQLQuery(tabId, ioc, category) {
         world: "MAIN",
         func: (iocValue, categoryValue, templates) => {
           const queryTemplate = templates[categoryValue] || templates.ip;
-          const finalQuery = queryTemplate.replace(/IP_VALUE|DOMAIN_VALUE|HASH_VALUE|ACCOUNT_VALUE|CVE_VALUE/g, iocValue);
+          // Function replacement so "$" sequences in the IOC are inserted literally.
+          const finalQuery = queryTemplate.replace(/IP_VALUE|DOMAIN_VALUE|HASH_VALUE|ACCOUNT_VALUE|CVE_VALUE/g, () => iocValue);
 
           let attempts = 0;
           const interval = setInterval(() => {
@@ -344,16 +393,17 @@ function injectKQLQuery(tabId, ioc, category) {
               console.log("RAIN: KQL query injected successfully.");
               clearInterval(interval);
 
+              // The portal sometimes resets the editor while it finishes loading.
+              // Only re-set if our IOC vanished, so analyst edits are never stomped.
               [1000, 2500, 4000].forEach(delay => {
                 setTimeout(() => {
-                  if (models[0] && models[0].getValue() !== finalQuery) {
+                  if (models[0] && !models[0].getValue().includes(iocValue)) {
                     models[0].setValue(finalQuery);
                     console.log(`RAIN: Query reinforced after ${delay}ms`);
                   }
                 }, delay);
               });
             } else {
-              console.log("RAIN: Waiting for Monaco editor... attempt", attempts);
               if (++attempts > 60) {
                 console.warn("RAIN: Monaco editor not loaded in time.");
                 clearInterval(interval);
@@ -372,86 +422,203 @@ function injectKQLQuery(tabId, ioc, category) {
   });
 }
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && pendingAHQInjections.has(tabId)) {
-    const data = pendingAHQInjections.get(tabId);
-    pendingAHQInjections.delete(tabId);
-    injectKQLQuery(tabId, data.ioc, data.category);
-  }
-});
+function findTool(toolId) {
+  return Object.values(huntingTools).flat().find(t => t.id === toolId) || null;
+}
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+function categoryOfTool(toolId) {
+  for (const [cat, tools] of Object.entries(huntingTools)) {
+    if (tools.some(t => t.id === toolId)) return cat;
+  }
+  return null;
+}
+
+function huntWithTool(toolId, ioc) {
+  const tool = findTool(toolId);
+  if (!tool || !ioc) return;
+
+  if (tool.id.includes("ahq")) {
+    chrome.tabs.create({ url: tool.url }, (newTab) => {
+      setPendingInjection(newTab.id, ioc, categoryOfTool(toolId));
+    });
+  } else {
+    chrome.tabs.create({ url: getUrlForTool(tool, ioc) });
+  }
+}
+
+function yeetCategory(category, ioc) {
+  const tools = huntingTools[category];
+  if (!tools || !ioc) return;
+
+  const createdTabIds = [];
+
+  Promise.all(tools.map(tool => {
+    return new Promise(resolve => {
+      if (tool.id.includes("ahq")) {
+        chrome.tabs.create({ url: tool.url, active: false }, newTab => {
+          setPendingInjection(newTab.id, ioc, category);
+          createdTabIds.push(newTab.id);
+          resolve();
+        });
+      } else {
+        chrome.tabs.create({ url: getUrlForTool(tool, ioc), active: false }, newTab => {
+          createdTabIds.push(newTab.id);
+          resolve();
+        });
+      }
+    });
+  })).then(() => {
+    if (createdTabIds.length === 0) return;
+    chrome.tabs.group({ tabIds: createdTabIds }, groupId => {
+      chrome.tabGroups.update(groupId, {
+        title: `${category.charAt(0).toUpperCase() + category.slice(1)} Search`,
+        color: {
+          ip: "blue",
+          domain: "green",
+          hash: "orange",
+          account: "purple",
+          cve: "red"
+        }[category] || "grey",
+        collapsed: true
+      });
+    });
+  });
+}
+
+chrome.contextMenus.onClicked.addListener((info) => {
   const rawSelection = info.selectionText?.trim();
   if (!rawSelection) return;
 
   const selectedText = cleanIOC(rawSelection);
-  const menuItemId = info.menuItemId;
+  const menuItemId = String(info.menuItemId);
 
   if (menuItemId.includes("yeet")) {
-    const category = menuItemId.split("-")[1];
-    const toolsToOpen = huntingTools[category].filter(tool => !tool.id.includes("ahq"));
-    const createdTabIds = [];
-
-    Promise.all(toolsToOpen.map(tool => {
-      return new Promise(resolve => {
-        if (tool.id.includes("ahq")) {
-          chrome.tabs.create({ url: tool.url, active: false }, newTab => {
-            pendingAHQInjections.set(newTab.id, { ioc: selectedText, category: category });
-            createdTabIds.push(newTab.id);
-            resolve();
-          });
-        } else {
-          const fullUrl = getUrlForTool(tool, selectedText);
-          chrome.tabs.create({ url: fullUrl, active: false }, newTab => {
-            createdTabIds.push(newTab.id);
-            resolve();
-          });
-        }
-      });
-    })).then(() => {
-      chrome.tabs.group({ tabIds: createdTabIds }, groupId => {
-        chrome.tabGroups.update(groupId, {
-          title: `${category.charAt(0).toUpperCase() + category.slice(1)} Search`,
-          color: {
-            ip: "blue",
-            domain: "green",
-            hash: "orange",
-            account: "purple",
-            cve: "red"
-          }[category] || "grey",
-          collapsed: true
-        });
-      });
-    });
-
+    yeetCategory(menuItemId.split("-")[1], selectedText);
     return;
   }
 
-  const allTools = Object.values(huntingTools).flat();
-  const tool = allTools.find(t => t.id === menuItemId);
-  if (!tool) return;
-
-  let category = "ip";
-  for (const [cat, tools] of Object.entries(huntingTools)) {
-    if (tools.some(t => t.id === menuItemId)) {
-      category = cat;
-      break;
-    }
-  }
-
-  if (tool.id.includes("ahq")) {
-    chrome.tabs.create({ url: tool.url }, (newTab) => {
-      pendingAHQInjections.set(newTab.id, { ioc: selectedText, category: category });
-    });
-  } else {
-    const fullUrl = getUrlForTool(tool, selectedText);
-    chrome.tabs.create({ url: fullUrl });
-  }
+  huntWithTool(menuItemId, selectedText);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "getDefaultTemplates") {
-    sendResponse({ defaultTemplates: kqlTemplates });
+  switch (message.action) {
+    case "getDefaultTemplates":
+      sendResponse({ defaultTemplates: kqlTemplates });
+      break;
+
+    case "classify": {
+      const ioc = cleanIOC(message.text || "");
+      const detected = classifyIOC(ioc);
+      // The UI can override the detected type when classification is wrong
+      // or the indicator wasn't recognized.
+      const category = (message.overrideCategory && huntingTools[message.overrideCategory])
+        ? message.overrideCategory
+        : detected;
+      const tools = category
+        ? huntingTools[category].map(t => ({ id: t.id, title: t.title }))
+        : [];
+      sendResponse({
+        ioc,
+        category,
+        detectedCategory: detected,
+        categoryLabel: category ? categoryLabels[category] : "Select IOC type",
+        tools,
+        generalTools: huntingTools.general.map(t => ({ id: t.id, title: t.title })),
+        canYeet: YEET_CATEGORIES.includes(category),
+        categories: Object.keys(categoryShortLabels).map(id => ({
+          id,
+          label: categoryLabels[id],
+          short: categoryShortLabels[id]
+        }))
+      });
+      break;
+    }
+
+    case "hunt":
+      huntWithTool(message.toolId, message.ioc);
+      break;
+
+    case "yeet":
+      yeetCategory(message.category, message.ioc);
+      break;
+
+    case "openShortcuts":
+      chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+      break;
   }
-  return true;
+  // All responses above are synchronous; no open channel is kept.
+});
+
+// Opens the RAIN side panel, optionally prefilled with an IOC.
+// storage.session is set fire-and-forget and sidePanel.open() is called in
+// the same tick: open() requires the user-gesture context, which survives
+// chrome API callbacks but should not wait on further async hops.
+function openHuntPanel(tabId, ioc) {
+  chrome.storage.session.set({ pendingPanelIoc: { ioc: ioc || "", at: Date.now() } });
+  chrome.sidePanel.open({ tabId }).catch(err => {
+    console.error("RAIN: side panel failed to open:", err);
+  });
+}
+
+// Injected into every frame to read the selection. Reaches into places a
+// plain getSelection() misses: focused inputs/textareas, and shadow DOM
+// selections via the Chromium-specific ShadowRoot.getSelection(), which
+// portals like Microsoft Defender rely on for much of their UI.
+function readSelectionDeep() {
+  const sel = window.getSelection && String(window.getSelection());
+  if (sel && sel.trim()) return sel;
+
+  const el = document.activeElement;
+  try {
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA") && el.selectionStart != null) {
+      const s = String(el.value.substring(el.selectionStart, el.selectionEnd));
+      if (s.trim()) return s;
+    }
+  } catch (e) {
+    // Some input types don't support selection ranges.
+  }
+
+  let root = el && el.shadowRoot;
+  while (root) {
+    if (typeof root.getSelection === "function") {
+      const s = String(root.getSelection());
+      if (s.trim()) return s;
+    }
+    const inner = root.activeElement;
+    root = inner ? inner.shadowRoot : null;
+  }
+  return "";
+}
+
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command !== "hunt-selection" || !tab?.id) return;
+
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id, allFrames: true },
+    func: readSelectionDeep
+  }, (results) => {
+    if (chrome.runtime.lastError) {
+      // Restricted page (chrome://, web store): the page can't host the
+      // in-page menu, but the side panel can still hunt a pasted IOC.
+      openHuntPanel(tab.id, "");
+      return;
+    }
+
+    const text = (results || []).map(r => r && r.result).find(t => t && t.trim()) || "";
+
+    if (!text.trim()) {
+      // Nothing readable on the page: hunt from the side panel instead.
+      openHuntPanel(tab.id, "");
+      return;
+    }
+
+    chrome.tabs.sendMessage(tab.id, { action: "show-hunt-menu" }, () => {
+      if (chrome.runtime.lastError) {
+        // No frame could show the in-page menu (content script missing, or
+        // the selection lives somewhere the page menu can't anchor to):
+        // open the side panel with the selection prefilled.
+        openHuntPanel(tab.id, cleanIOC(text));
+      }
+    });
+  });
 });
