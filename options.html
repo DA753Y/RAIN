@@ -5,26 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="datesy">
   <title>RAIN - Settings & Customization</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
-  
+
   <style>
     :root {
-      --bg-color: #1e1e20;
-      --card-bg: #161618;
-      --card-border: #2a2a2e;
-      --primary-blue: #0c85ea;
-      --primary-dark-blue: #0b76cf;
-      --text-main: #ffffff;
-      --text-muted: #9f9fa3;
-      --text-dark: #525256;
-      --success-green: #10b981;
-      --danger-red: #ef4444;
-      --shadow-glow: 0 4px 12px rgba(12, 133, 234, 0.15);
-      --font-display: 'Outfit', sans-serif;
-      --font-body: 'Inter', sans-serif;
-      --font-mono: 'Fira Code', 'Consolas', monospace;
+      /* Palette sampled from the RAIN dachshund icon */
+      --bg-0: #081420;          /* app background, icon edge navy */
+      --bg-1: #0B1B2A;          /* header / sidebar */
+      --bg-2: #0E2233;          /* cards */
+      --bg-3: #123044;          /* hover / raised */
+      --border: #1C3A50;
+      --border-soft: #14293C;
+      --teal: #2E8CA8;          /* icon field highlight */
+      --teal-bright: #45A8C4;
+      --teal-dim: rgba(46, 140, 168, 0.14);
+      --copper: #C28A5C;        /* the dachshund's tan */
+      --copper-bright: #D9A878;
+      --copper-dim: rgba(194, 138, 92, 0.13);
+      --text: #E9F1F5;
+      --muted: #8CA3B5;
+      --success: #3BAF7E;
+      --danger: #E2604F;
+      --font-body: -apple-system, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      --font-mono: "Cascadia Code", Consolas, "JetBrains Mono", monospace;
     }
 
     html {
@@ -37,14 +39,13 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     body {
       width: 780px;
       height: 550px;
-      background-color: var(--bg-color);
-      color: var(--text-main);
+      background-color: var(--bg-0);
+      color: var(--text);
       font-family: var(--font-body);
       display: flex;
       flex-direction: column;
@@ -52,90 +53,81 @@
       overflow: hidden;
     }
 
+    /* ---------- Header ---------- */
+
     header {
-      padding: 0.75rem 1.5rem;
-      background-color: var(--bg-color);
-      border-bottom: 1px solid var(--card-border);
+      padding: 0 1.25rem;
+      background-color: var(--bg-1);
+      border-bottom: 1px solid var(--border-soft);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      height: 80px;
+      height: 64px;
       flex-shrink: 0;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.7rem;
     }
 
     .logo-container {
-      width: 56px;
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 40px;
+      height: 40px;
       flex-shrink: 0;
     }
 
     .logo-container img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
 
     .brand-text h1 {
-      font-family: var(--font-display);
-      font-size: 1.3rem;
-      font-weight: 800;
-      line-height: 1.1;
-      color: var(--text-main);
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      line-height: 1.15;
+      color: var(--text);
     }
 
     .brand-text p {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      letter-spacing: 0.5px;
+      font-size: 0.65rem;
+      color: var(--copper);
+      letter-spacing: 1.2px;
       text-transform: uppercase;
       font-weight: 600;
     }
 
-    .search-sim-wrapper {
+    .header-meta {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      background-color: #121213;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 0.4rem 0.75rem;
-      width: 280px;
-      color: var(--text-muted);
     }
 
-    .search-sim-wrapper input {
-      background: transparent;
-      border: none;
-      color: var(--text-main);
-      font-family: var(--font-body);
-      font-size: 0.85rem;
-      width: 100%;
-      outline: none;
-    }
-
-    .system-status {
-      font-size: 0.7rem;
+    .pill {
+      font-size: 0.68rem;
       font-weight: 600;
-      color: var(--text-muted);
-      border: 1px solid var(--card-border);
-      background-color: rgba(255, 255, 255, 0.03);
-      padding: 0.25rem 0.6rem;
+      color: var(--muted);
+      border: 1px solid var(--border-soft);
+      background-color: rgba(255, 255, 255, 0.02);
+      padding: 0.22rem 0.6rem;
       border-radius: 9999px;
     }
+
+    .pill kbd {
+      font-family: var(--font-mono);
+      color: var(--teal-bright);
+      font-size: 0.68rem;
+    }
+
+    /* ---------- Layout ---------- */
 
     main {
       flex-grow: 1;
       display: flex;
-      height: calc(550px - 80px);
+      height: calc(550px - 64px);
       overflow: hidden;
     }
 
@@ -145,18 +137,18 @@
         height: 100vh;
       }
       main {
-        height: calc(100vh - 80px);
+        height: calc(100vh - 64px);
       }
     }
 
     .sidebar {
-      width: 220px;
-      background-color: var(--bg-color);
-      border-right: 1px solid var(--card-border);
+      width: 200px;
+      background-color: var(--bg-1);
+      border-right: 1px solid var(--border-soft);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 1rem 0.75rem;
+      padding: 0.9rem 0.65rem;
       flex-shrink: 0;
       height: 100%;
     }
@@ -164,82 +156,101 @@
     .sidebar-list {
       display: flex;
       flex-direction: column;
-      gap: 0.35rem;
+      gap: 0.25rem;
     }
 
     .nav-btn {
       background: transparent;
       border: none;
-      color: var(--text-muted);
-      padding: 0.75rem 1rem;
+      color: var(--muted);
+      padding: 0.6rem 0.8rem;
       text-align: left;
-      border-radius: 8px;
+      border-radius: 7px;
       font-family: var(--font-body);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 0.6rem;
       width: 100%;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
 
     .nav-btn:hover {
-      color: var(--text-main);
-      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      background-color: rgba(255, 255, 255, 0.04);
     }
 
     .nav-btn.active {
-      color: #ffffff;
-      background-color: var(--primary-blue);
+      color: #FFFFFF;
+      background-color: var(--teal-dim);
+      box-shadow: inset 2px 0 0 var(--teal-bright);
+    }
+
+    .nav-btn.active svg {
+      color: var(--teal-bright);
     }
 
     .sidebar-footer {
-      border-top: 1px solid var(--card-border);
+      border-top: 1px solid var(--border-soft);
       padding-top: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .sidebar-version {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.5px;
     }
 
     .content-area {
       flex-grow: 1;
-      background-color: var(--card-bg);
-      padding: 1rem 1.25rem;
+      background-color: var(--bg-0);
+      padding: 1.15rem 1.35rem;
       overflow-y: auto;
       height: 100%;
     }
 
-    .tab-content {
-      display: none;
+    .content-area::-webkit-scrollbar { width: 10px; }
+    .content-area::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 6px;
+      border: 2px solid var(--bg-0);
     }
 
-    .tab-content.active {
-      display: block;
-    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
-    #queries {
-      overflow: hidden;
-    }
+    #queries { overflow: hidden; }
 
     .section-title {
-      font-family: var(--font-display);
-      font-size: 1.3rem;
+      font-size: 1.05rem;
       font-weight: 700;
       margin-bottom: 0.15rem;
-      color: var(--text-main);
+      color: var(--text);
+      letter-spacing: 0.2px;
     }
 
     .section-description {
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      margin-bottom: 0.5rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-bottom: 0.75rem;
     }
+
+    /* ---------- KQL editors ---------- */
 
     .editor-tabs {
       display: flex;
-      gap: 0.35rem;
-      background-color: #121213;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      background-color: var(--bg-1);
       padding: 0.25rem;
       border-radius: 8px;
-      border: 1px solid var(--card-border);
+      border: 1px solid var(--border-soft);
       margin-bottom: 0.75rem;
       width: fit-content;
     }
@@ -247,30 +258,26 @@
     .editor-tab-btn {
       background: transparent;
       border: none;
-      color: var(--text-muted);
-      padding: 0.4rem 0.85rem;
+      color: var(--muted);
+      padding: 0.38rem 0.8rem;
       border-radius: 6px;
-      font-size: 0.75rem;
+      font-family: var(--font-body);
+      font-size: 0.74rem;
       font-weight: 600;
+      white-space: nowrap;
       cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
 
-    .editor-tab-btn:hover {
-      color: var(--text-main);
-    }
+    .editor-tab-btn:hover { color: var(--text); }
 
     .editor-tab-btn.active {
-      background: var(--primary-blue);
-      color: #ffffff;
+      background: var(--teal);
+      color: #FFFFFF;
     }
 
-    .editor-container {
-      display: none;
-    }
-
-    .editor-container.active {
-      display: block;
-    }
+    .editor-container { display: none; }
+    .editor-container.active { display: block; }
 
     .editor-header {
       display: flex;
@@ -281,37 +288,33 @@
 
     .editor-label {
       font-weight: 600;
-      font-size: 0.8rem;
-      color: var(--text-main);
+      font-size: 0.74rem;
+      color: var(--text);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
+      letter-spacing: 0.7px;
     }
 
     .placeholder-badge {
-      font-size: 0.7rem;
-      background-color: rgba(255, 255, 255, 0.05);
-      padding: 0.2rem 0.5rem;
+      font-size: 0.68rem;
+      background-color: var(--copper-dim);
+      padding: 0.18rem 0.5rem;
       border-radius: 5px;
-      border: 1px solid var(--card-border);
-      color: var(--primary-blue);
+      border: 1px solid rgba(194, 138, 92, 0.25);
+      color: var(--copper-bright);
       font-family: var(--font-mono);
     }
 
     .textarea-wrapper {
       width: 100%;
       border-radius: 8px;
-      border: 1px solid var(--card-border);
-      background-color: #121213;
+      border: 1px solid var(--border);
+      background-color: var(--bg-1);
       overflow: hidden;
       cursor: text;
+      transition: border-color 0.15s ease;
     }
 
-    .textarea-wrapper:focus-within {
-      border-color: var(--primary-blue);
-    }
+    .textarea-wrapper:focus-within { border-color: var(--teal); }
 
     .kql-textarea {
       display: block;
@@ -319,109 +322,338 @@
       height: 200px;
       background: transparent;
       border: none;
-      color: #f1f5f9;
+      color: #DDE8EE;
       font-family: var(--font-mono);
-      font-size: 0.85rem;
-      padding: 1rem;
+      font-size: 0.8rem;
+      padding: 0.9rem 1rem;
       resize: none;
-      line-height: 1.5;
+      line-height: 1.55;
       tab-size: 4;
       outline: none;
     }
 
-    .doc-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-
-    .doc-card {
-      background-color: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 1rem;
-    }
-
-    .doc-card:hover {
-      border-color: var(--primary-blue);
-    }
-
-    .doc-card h3 {
-      font-family: var(--font-display);
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--primary-blue);
-      margin-bottom: 0.25rem;
-    }
-
-    .doc-card code {
-      font-family: var(--font-mono);
-      color: #93c5fd;
-      background-color: rgba(12, 133, 234, 0.1);
-      padding: 0.1rem 0.3rem;
-      border-radius: 4px;
-      font-weight: bold;
-      font-size: 0.75rem;
-    }
-
-    .doc-card p {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: 0.25rem;
-    }
-
     .action-bar {
-      margin-top: 0.5rem;
+      margin-top: 0.65rem;
       display: flex;
       justify-content: flex-end;
       align-items: center;
-      padding-top: 0.5rem;
-      border-top: 1px solid var(--card-border);
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--border-soft);
     }
 
+    /* ---------- Buttons ---------- */
+
     .btn {
-      padding: 0.55rem 1.25rem;
+      padding: 0.5rem 1.15rem;
       border-radius: 6px;
       font-family: var(--font-body);
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
       border: 1px solid transparent;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
 
-    .btn svg {
-      flex-shrink: 0;
-    }
+    .btn svg { flex-shrink: 0; }
 
     .btn-save {
-      background: var(--primary-blue);
-      color: #ffffff;
+      background: var(--copper);
+      color: #14100C;
     }
 
-    .btn-save:hover {
-      background-color: var(--primary-dark-blue);
+    .btn-save:hover { background-color: var(--copper-bright); }
+
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    .btn-secondary:hover {
+      background-color: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      border-color: var(--teal);
     }
 
     .btn-reset {
       background: transparent;
-      border-color: var(--card-border);
-      color: var(--text-muted);
+      border-color: var(--border-soft);
+      color: var(--muted);
       width: 100%;
       justify-content: center;
+      font-size: 0.76rem;
     }
 
     .btn-reset:hover {
-      background-color: rgba(255, 255, 255, 0.05);
-      color: var(--text-main);
+      color: var(--text);
+      border-color: var(--border);
     }
+
+    .btn-reset.armed {
+      color: var(--danger);
+      border-color: var(--danger);
+      background-color: rgba(226, 96, 79, 0.08);
+    }
+
+    /* ---------- Settings ---------- */
+
+    .setting-card {
+      background-color: var(--bg-2);
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .setting-text h3 {
+      font-size: 0.86rem;
+      font-weight: 650;
+      color: var(--text);
+      margin-bottom: 0.15rem;
+    }
+
+    .setting-text p {
+      font-size: 0.76rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .setting-text kbd {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--teal-bright);
+      background: var(--teal-dim);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+    }
+
+    .switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      top: 3px;
+      background-color: var(--muted);
+      border-radius: 50%;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    .switch input:checked + .slider {
+      background-color: var(--teal);
+      border-color: var(--teal);
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(18px);
+      background-color: #FFFFFF;
+    }
+
+    /* ---------- Docs ---------- */
+
+    .intro-card {
+      background: linear-gradient(135deg, var(--teal-dim) 0%, rgba(194, 138, 92, 0.05) 100%);
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .intro-card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--teal-bright);
+      margin-bottom: 0.4rem;
+    }
+
+    .intro-card p {
+      font-size: 0.8rem;
+      color: #CFDCE5;
+      line-height: 1.6;
+    }
+
+    .intro-card p + p { margin-top: 0.6rem; }
+
+    .doc-card {
+      background-color: var(--bg-2);
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .doc-card.opsec {
+      border-left: 3px solid var(--copper);
+    }
+
+    .doc-list {
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .doc-list li {
+      font-size: 0.78rem;
+      color: #BECDD7;
+      line-height: 1.55;
+      position: relative;
+      padding-left: 1rem;
+    }
+
+    .doc-list li::before {
+      content: "\2022";
+      color: var(--copper);
+      font-weight: bold;
+      position: absolute;
+      left: 0;
+    }
+
+    .doc-list code, .doc-list kbd {
+      font-family: var(--font-mono);
+      color: var(--teal-bright);
+      background-color: var(--teal-dim);
+      padding: 0.08rem 0.3rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+    }
+
+    .var-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      background-color: var(--bg-2);
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      padding: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .var-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.22rem 0.4rem;
+    }
+
+    .var-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--copper-bright);
+      background-color: var(--copper-dim);
+      padding: 0.18rem 0.5rem;
+      border-radius: 5px;
+      width: 132px;
+      text-align: center;
+      flex-shrink: 0;
+      border: 1px solid rgba(194, 138, 92, 0.22);
+    }
+
+    .var-desc {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    /* ---------- Hunting directory ---------- */
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 0.6rem;
+    }
+
+    .tool-card {
+      background-color: var(--bg-2);
+      border: 1px solid var(--border-soft);
+      border-radius: 9px;
+      padding: 0.7rem;
+      display: flex;
+      gap: 0.65rem;
+      align-items: flex-start;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .tool-card:hover {
+      border-color: var(--teal);
+      background-color: var(--bg-3);
+    }
+
+    .tool-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      background: linear-gradient(160deg, var(--bg-3), var(--bg-1));
+      border: 1px solid var(--border);
+      color: var(--teal-bright);
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .tool-card:hover .tool-badge {
+      color: var(--copper-bright);
+      border-color: var(--copper);
+    }
+
+    .tool-info h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.1rem;
+    }
+
+    .tool-info p {
+      font-size: 0.68rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    /* ---------- Toasts ---------- */
 
     .toast-container {
       position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
+      bottom: 1.25rem;
+      right: 1.25rem;
       z-index: 100;
       display: flex;
       flex-direction: column;
@@ -430,197 +662,32 @@
     }
 
     .toast {
-      background-color: #121213;
-      border: 1px solid var(--card-border);
+      background-color: var(--bg-1);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 0.75rem 1.25rem;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      padding: 0.7rem 1.1rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
       display: flex;
       align-items: center;
       gap: 0.6rem;
       transform: translateY(100px);
       opacity: 0;
-      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       pointer-events: none;
     }
 
     .toast.show {
       transform: translateY(0);
       opacity: 1;
-      pointer-events: auto;
     }
 
-    .toast-success {
-      border-left: 4px solid var(--success-green);
-    }
-
-    .toast-success svg {
-      color: var(--success-green);
-    }
+    .toast-success { border-left: 3px solid var(--success); }
+    .toast-success svg { color: var(--success); }
 
     .toast-message {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .var-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      background-color: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 0.6rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .var-item {
-      display: flex;
-      align-items: center;
-      gap: 0.85rem;
-      padding: 0.25rem 0.4rem;
-    }
-
-    .var-badge {
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--primary-blue);
-      background-color: rgba(12, 133, 234, 0.1);
-      padding: 0.2rem 0.5rem;
-      border-radius: 5px;
-      width: 140px;
-      text-align: center;
-      flex-shrink: 0;
-      border: 1px solid rgba(12, 133, 234, 0.15);
-    }
-
-    .var-desc {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .tools-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-      gap: 0.75rem;
-    }
-
-    .tool-card {
-      background-color: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 0.75rem;
-      display: flex;
-      gap: 0.65rem;
-      align-items: flex-start;
-      text-decoration: none;
-      color: inherit;
-      cursor: pointer;
-    }
-
-    .tool-card:hover {
-      border-color: var(--primary-blue);
-      background-color: rgba(255, 255, 255, 0.06);
-    }
-
-    .tool-favicon {
-      width: 28px;
-      height: 28px;
-      border-radius: 5px;
-      background-color: #121213;
-      padding: 3px;
-      border: 1px solid var(--card-border);
-      flex-shrink: 0;
-    }
-
-    .tool-info {
-      display: flex;
-      flex-direction: column;
-      gap: 0.1rem;
-    }
-
-    .tool-info h3 {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 0.1rem;
-    }
-
-    .tool-info p {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      line-height: 1.3;
-    }
-
-    .intro-card {
-      background: linear-gradient(135deg, rgba(12, 133, 234, 0.07) 0%, rgba(255, 255, 255, 0.01) 100%);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 1.25rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    .intro-card h2 {
-      font-family: var(--font-display);
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--primary-blue);
-      margin-bottom: 0.5rem;
-    }
-
-    .intro-card p {
-      font-size: 0.825rem;
-      color: #e2e8f0;
-      line-height: 1.6;
-    }
-
-    .intro-card p + p {
-      margin-top: 0.75rem;
-    }
-
-    .defang-card {
-      background-color: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .defang-list {
-      list-style-type: none;
-      padding-left: 0.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-    }
-
-    .defang-list li {
-      font-size: 0.8rem;
-      color: #cbd5e1;
-      line-height: 1.5;
-      position: relative;
-      padding-left: 1rem;
-    }
-
-    .defang-list li::before {
-      content: "•";
-      color: var(--primary-blue);
-      font-weight: bold;
-      display: inline-block;
-      width: 1rem;
-      margin-left: -1rem;
-    }
-
-    .defang-list code {
-      font-family: var(--font-mono);
-      color: #93c5fd;
-      background-color: rgba(12, 133, 234, 0.1);
-      padding: 0.1rem 0.3rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
+      color: var(--text);
     }
   </style>
 </head>
@@ -632,12 +699,13 @@
       </div>
       <div class="brand-text">
         <h1>RAIN</h1>
-        <p>Analyst Control Center</p>
+        <p>Right-click Analyst's IOC Navigator</p>
       </div>
     </div>
 
-    <div class="system-status">
-      <span>RAIN v1.0</span>
+    <div class="header-meta">
+      <div class="pill">Hunt hotkey <kbd class="hotkey-display">Alt+R</kbd></div>
+      <div class="pill">v2.0.0</div>
     </div>
   </header>
 
@@ -645,28 +713,35 @@
     <div class="sidebar">
       <div class="sidebar-list">
         <button class="nav-btn active" data-tab="about">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Documentation
         </button>
         <button class="nav-btn" data-tab="queries">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
           KQL Templates
         </button>
+        <button class="nav-btn" data-tab="settings">
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </button>
       </div>
-      
+
       <div class="sidebar-footer">
         <button id="btn-reset" class="btn btn-reset">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-          Reset Defaults
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          <span id="btn-reset-label">Reset Defaults</span>
         </button>
+        <div class="sidebar-version">RAIN v2.0.0</div>
       </div>
     </div>
 
     <div class="content-area">
+
+      <!-- ============ KQL TEMPLATES ============ -->
       <div id="queries" class="tab-content">
         <h2 class="section-title">KQL Templates</h2>
-        <p class="section-description">Customize the templates injected into Defender.</p>
-        
+        <p class="section-description">Customize the queries inserted into Defender Advanced Hunting. Keep the placeholder in the query; it is replaced with the cleaned IOC. Queries are inserted, never auto-run.</p>
+
         <div class="editor-tabs">
           <button class="editor-tab-btn active" data-editor="ip">IP Address</button>
           <button class="editor-tab-btn" data-editor="domain">Domain / URL</button>
@@ -727,184 +802,280 @@
 
         <div class="action-bar">
           <button id="btn-save" class="btn btn-save">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
             Save Custom Templates
           </button>
         </div>
       </div>
 
+      <!-- ============ SETTINGS ============ -->
+      <div id="settings" class="tab-content">
+        <h2 class="section-title">Settings</h2>
+        <p class="section-description">Control how RAIN surfaces on the pages you investigate.</p>
+
+        <div class="setting-card">
+          <div class="setting-text">
+            <h3>Floating hunt button</h3>
+            <p>Shows the RAIN button beside highlighted text on any page. Click it to open the hunt menu, including on sites that replace the right-click menu with their own. Dismiss it with <kbd>Esc</kbd> or by clicking elsewhere.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-floating">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-text">
+            <h3>Force native right-click with <kbd>Shift</kbd></h3>
+            <p>Hold <kbd>Shift</kbd> while right-clicking to skip a site's custom context menu and open the browser's own menu, where the RAIN hunt options are. Normal right-clicks are unaffected.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-nativemenu">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-text">
+            <h3>Hunt hotkey: <kbd class="hotkey-display">Alt+R</kbd></h3>
+            <p>Opens the hunt menu for the highlighted text. If nothing is highlighted, or the selection cannot be read, the RAIN side panel opens instead so the indicator can be pasted. Key combinations already used by the browser cannot be assigned.</p>
+          </div>
+          <button id="btn-shortcuts" class="btn btn-secondary">Change shortcut</button>
+        </div>
+      </div>
+
+      <!-- ============ DOCUMENTATION ============ -->
       <div id="about" class="tab-content active">
         <div class="intro-card">
           <h2>Welcome to RAIN</h2>
-          <p>Welcome to RAIN, the Right-click Analyst's IOC Navigator. Named after a particularly relentless miniature dachshund, it is a dedicated SOC tool designed to speed up the OSINT hunting of IOCs. Built to eliminate the friction of manual copypasting and excessive tab switching, RAIN bridges the gap between web text and actionable threat intelligence.</p>
-          <p>Simply highlight an IOC on any webpage and open your right-click context menu and RAIN automatically cleans the string and empowers you to immediately launch investigations.</p>
+          <p>RAIN, the Right-click Analyst's IOC Navigator, is named after a particularly relentless miniature dachshund. It is a dedicated SOC tool designed to speed up the OSINT hunting of IOCs. Built to eliminate the friction of manual copy-pasting and excessive tab switching, RAIN bridges the gap between web text and actionable threat intelligence.</p>
+          <p>Highlight an IOC anywhere and RAIN cleans the string, classifies it, and launches your investigation.</p>
         </div>
 
-        <h2 class="section-title" style="margin-top: 1.5rem;">Automatic Refanging & Cleaning</h2>
-        <p class="section-description">RAIN automatically sanitizes and refangs highlighted indicators on the fly before executing search queries. Supported refanging features include:</p>
-
-        <div class="defang-card">
-          <ul class="defang-list">
-            <li><strong>Protocol Refanging:</strong> Automatically converts defanged protocols like <code>hxxps://</code>, <code>hxxp://</code>, <code>meows://</code>, or <code>meow://</code> back to standard <code>https://</code> or <code>http://</code>.</li>
-            <li><strong>Obfuscated Dots & Colons:</strong> Replaces bracketed, parenthesized, or verbal representations of periods and colons (e.g., <code>[.]</code>, <code>(.)</code>, <code>{.}</code>, <code>[dot]</code>, <code>(dot)</code>, <code>[:]</code>, and <code>(:)</code>) with actual periods (<code>.</code>) and colons (<code>:</code>).</li>
-            <li><strong>Surrounding Trimming:</strong> Strips away accidental leading or trailing quotes, parentheses, brackets, or angle brackets (e.g., <code>"</code>, <code>'</code>, <code>[</code>, <code>]</code>, <code>(</code>, <code>)</code>, <code>&lt;</code>, <code>&gt;</code>) highlighted along with the IOC.</li>
+        <h2 class="section-title">Four Ways to Hunt</h2>
+        <p class="section-description">All four surfaces apply the same cleaning, classification, and tools.</p>
+        <div class="doc-card">
+          <ul class="doc-list">
+            <li><strong>Right-click menu:</strong> highlight an IOC, right-click, and choose <code>RAIN - Hunt IOC</code>. The menu lists every category, so select the one that matches the indicator. If a site shows its own right-click menu instead, hold <kbd>Shift</kbd> while right-clicking to get the browser menu.</li>
+            <li><strong>Floating button:</strong> highlight text and click the RAIN button that appears beside it. RAIN classifies the indicator automatically and shows the matching tools. If the detected type is wrong, or the indicator wasn't recognized, switch it with the type selector at the top of the menu. Press <kbd>Esc</kbd> or click elsewhere to dismiss.</li>
+            <li><strong>Hunt hotkey (<kbd class="hotkey-display">Alt+R</kbd>):</strong> opens the same menu for the highlighted text. Change the key in Settings.</li>
+            <li><strong>Side panel:</strong> docks to the browser window whenever the in-page menu isn't possible: nothing highlighted, browser pages, tabs opened before RAIN was installed, or portals that hide their selection. It opens prefilled with the selection where RAIN can read it. Open it any time from the browser's side panel menu: paste an indicator, adjust the type, and hunt.</li>
           </ul>
         </div>
 
-        <h2 class="section-title" style="margin-top: 1.5rem;">Variables & Placeholders</h2>
-        <p class="section-description">Variables replaced dynamically by RAIN during queries.</p>
-        
+        <h2 class="section-title">Supported IOC Types</h2>
+        <p class="section-description">The floating button and hotkey classify indicators automatically; the right-click menu leaves the choice to you.</p>
+        <div class="doc-card">
+          <ul class="doc-list">
+            <li><strong>IP addresses:</strong> IPv4 and IPv6.</li>
+            <li><strong>Domains &amp; URLs:</strong> bare domains, subdomains, and full URLs.</li>
+            <li><strong>File hashes:</strong> MD5, SHA-1, and SHA-256, detected by length.</li>
+            <li><strong>Accounts &amp; emails:</strong> email addresses and UPNs.</li>
+            <li><strong>Vulnerabilities:</strong> CVE identifiers, e.g. <code>CVE-2024-21412</code>.</li>
+          </ul>
+        </div>
+
+        <h2 class="section-title">Yeet Search</h2>
+        <p class="section-description">One click, every relevant tool.</p>
+        <div class="doc-card">
+          <ul class="doc-list">
+            <li>Yeet Search opens the IOC in <strong>all tools for its category at once</strong>, including Defender Advanced Hunting. Available for IPs, domains, hashes, and CVEs.</li>
+            <li>Tabs open in the background and are collected into a single <strong>collapsed, colour-coded tab group</strong> (blue = IP, green = domain, orange = hash, red = CVE), so the current workspace is not disturbed.</li>
+            <li>Close the whole group when the pivot is done to keep the tab bar clean.</li>
+          </ul>
+        </div>
+
+        <h2 class="section-title">Defender Advanced Hunting</h2>
+        <p class="section-description">Hunts that target Defender AHQ inject a ready-to-run KQL query.</p>
+        <div class="doc-card">
+          <ul class="doc-list">
+            <li>RAIN opens <code>security.microsoft.com</code> Advanced Hunting and inserts the KQL template for the IOC type, with the placeholder replaced by the cleaned indicator.</li>
+            <li>The query is <strong>inserted, never executed</strong>. Review it and press Run in the portal yourself.</li>
+            <li>An active Defender portal session with Advanced Hunting access is required. RAIN waits up to 30 seconds for the query editor to finish loading.</li>
+            <li>Every query is customizable per IOC type in the <strong>KQL Templates</strong> tab.</li>
+          </ul>
+        </div>
+
+        <h2 class="section-title">Automatic Refanging & Cleaning</h2>
+        <p class="section-description">RAIN sanitizes and refangs highlighted indicators on the fly before executing search queries.</p>
+        <div class="doc-card">
+          <ul class="doc-list">
+            <li><strong>Protocol Refanging:</strong> converts defanged protocols like <code>hxxps://</code>, <code>hxxp://</code>, <code>meows://</code>, or <code>meow://</code> back to standard <code>https://</code> or <code>http://</code>.</li>
+            <li><strong>Obfuscated Dots, Colons & Ats:</strong> replaces bracketed, parenthesized, or verbal representations (e.g., <code>[.]</code>, <code>(.)</code>, <code>{.}</code>, <code>[dot]</code>, <code>(dot)</code>, <code>[:]</code>, <code>(:)</code>, <code>[@]</code>, <code>[at]</code>) with the real characters.</li>
+            <li><strong>Surrounding Trimming:</strong> strips accidental leading or trailing quotes, parentheses, brackets, or angle brackets highlighted along with the IOC.</li>
+          </ul>
+        </div>
+
+        <h2 class="section-title">Variables & Placeholders</h2>
+        <p class="section-description">Each KQL template contains one placeholder, replaced with the cleaned IOC when the query is inserted into Defender.</p>
+
         <div class="var-list">
           <div class="var-item">
             <span class="var-badge">IP_VALUE</span>
-            <span class="var-desc">Replaces with the extracted IPv4 or IPv6 address.</span>
+            <span class="var-desc">Replaced with the extracted IPv4 or IPv6 address.</span>
           </div>
           <div class="var-item">
             <span class="var-badge">DOMAIN_VALUE</span>
-            <span class="var-desc">Replaces with the extracted domain name or URL.</span>
+            <span class="var-desc">Replaced with the extracted domain name or URL.</span>
           </div>
           <div class="var-item">
             <span class="var-badge">HASH_VALUE</span>
-            <span class="var-desc">Replaces with the extracted MD5, SHA-1, or SHA-256 file hash.</span>
+            <span class="var-desc">Replaced with the extracted MD5, SHA-1, or SHA-256 file hash.</span>
           </div>
           <div class="var-item">
             <span class="var-badge">ACCOUNT_VALUE</span>
-            <span class="var-desc">Replaces with the extracted user account name, email address, or UPN.</span>
+            <span class="var-desc">Replaced with the extracted user account name, email address, or UPN.</span>
           </div>
           <div class="var-item">
             <span class="var-badge">CVE_VALUE</span>
-            <span class="var-desc">Replaces with the extracted CVE vulnerability identifier (e.g., CVE-YYYY-NNNN).</span>
+            <span class="var-desc">Replaced with the extracted CVE identifier (e.g., CVE-YYYY-NNNN).</span>
           </div>
         </div>
 
-        <h2 class="section-title" style="margin-top: 1.5rem;">Hunting Directory</h2>
-        <p class="section-description">Integrated analyst tools and reputation engines.</p>
+        <h2 class="section-title">OPSEC Reminder</h2>
+        <p class="section-description">Think before you pivot.</p>
+        <div class="doc-card opsec">
+          <ul class="doc-list">
+            <li>Every hunt sends the indicator to the external service you choose. Searches on public platforms may be visible to the platform, its users, and in some cases the adversary.</li>
+            <li>Avoid submitting internal hostnames, employee accounts, or indicators from targeted intrusions to public tools unless your team's OPSEC policy allows it.</li>
+            <li>RAIN itself stores nothing outside your browser and sends no telemetry. Templates and settings live in local extension storage only.</li>
+          </ul>
+        </div>
+
+        <h2 class="section-title">Troubleshooting</h2>
+        <p class="section-description">Quick answers for the common snags.</p>
+        <div class="doc-card">
+          <ul class="doc-list">
+            <li><strong>RAIN doesn't appear on a page:</strong> pages opened before RAIN was installed or updated need a refresh. Browser-internal pages (<code>chrome://</code>), the Chrome Web Store, and the built-in PDF viewer do not allow extensions to run; on those pages the hunt hotkey opens the RAIN side panel instead.</li>
+            <li><strong>No right-click option:</strong> the menu only appears while text is highlighted. If the site shows its own menu, hold <kbd>Shift</kbd> while right-clicking, or use the floating button.</li>
+            <li><strong>KQL didn't appear in Defender:</strong> confirm the portal session is signed in and the Advanced Hunting editor has finished loading. The query is inserted into the editor, not executed.</li>
+            <li><strong>Floating button doesn't show:</strong> check it is enabled in Settings. Selections shorter than 2 or longer than 500 characters are ignored.</li>
+            <li><strong>Hotkey opens the side panel even though text is highlighted:</strong> some portals, including Microsoft Defender, render content inside frames or shadow DOM where the selection cannot always be read. RAIN prefills the panel when it can; otherwise copy the indicator and paste it in. The right-click menu still works on these pages because the browser supplies the highlighted text itself.</li>
+            <li><strong>Hotkey does nothing:</strong> another extension or the browser may already use that combination. Set a different one via Settings &rarr; Change shortcut.</li>
+          </ul>
+        </div>
+
+        <h2 class="section-title">Hunting Directory</h2>
+        <p class="section-description">Integrated analyst tools and reputation engines. Click a card to open the service.</p>
 
         <div class="tools-grid">
           <a class="tool-card" href="https://talosintelligence.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=talosintelligence.com&sz=64" alt="Cisco Talos Logo">
+            <span class="tool-badge">TA</span>
             <div class="tool-info">
               <h3>Cisco Talos</h3>
-              <p>Provides comprehensive real-time network reputation and threat intelligence.</p>
+              <p>Comprehensive real-time network reputation and threat intelligence.</p>
             </div>
           </a>
           <a class="tool-card" href="https://www.virustotal.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=virustotal.com&sz=64" alt="VirusTotal Logo">
+            <span class="tool-badge">VT</span>
             <div class="tool-info">
               <h3>VirusTotal</h3>
-              <p>Analyzes files and URLs to detect malware and share results with the security community.</p>
+              <p>Analyzes files and URLs to detect malware and share results with the community.</p>
             </div>
           </a>
           <a class="tool-card" href="https://urlscan.io" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=urlscan.io&sz=64" alt="URLScan Logo">
+            <span class="tool-badge">US</span>
             <div class="tool-info">
               <h3>URLScan.io</h3>
               <p>Web page sandbox scanner that logs details, connections, and screenshots.</p>
             </div>
           </a>
           <a class="tool-card" href="https://www.abuseipdb.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=abuseipdb.com&sz=64" alt="AbuseIPDB Logo">
+            <span class="tool-badge">AB</span>
             <div class="tool-info">
               <h3>AbuseIPDB</h3>
               <p>IP reputation database tracking reported hacking, spam, and DDoS origins.</p>
             </div>
           </a>
-
           <a class="tool-card" href="https://www.shodan.io" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=shodan.io&sz=64" alt="Shodan Logo">
+            <span class="tool-badge">SH</span>
             <div class="tool-info">
               <h3>Shodan</h3>
               <p>Search engine for internet-connected devices, open ports, and services.</p>
             </div>
           </a>
           <a class="tool-card" href="https://search.censys.io" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=censys.com&sz=64" alt="Censys Logo">
+            <span class="tool-badge">CE</span>
             <div class="tool-info">
               <h3>Censys</h3>
-              <p>Attacks surface platform mapping public facing hosts and SSL certificates.</p>
+              <p>Attack surface platform mapping public-facing hosts and SSL certificates.</p>
             </div>
           </a>
           <a class="tool-card" href="https://security.microsoft.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=security.microsoft.com&sz=64" alt="Microsoft Defender Logo">
+            <span class="tool-badge">MD</span>
             <div class="tool-info">
               <h3>Microsoft Defender</h3>
               <p>Unified enterprise portal for executing advanced KQL hunting queries.</p>
             </div>
           </a>
-
           <a class="tool-card" href="https://www.urlvoid.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=urlvoid.com&sz=64" alt="URLVoid Logo">
+            <span class="tool-badge">UV</span>
             <div class="tool-info">
               <h3>URLVoid</h3>
               <p>Scans website domains against multi-engine reputation blacklists.</p>
             </div>
           </a>
           <a class="tool-card" href="https://mxtoolbox.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=mxtoolbox.com&sz=64" alt="MXToolbox Logo">
+            <span class="tool-badge">MX</span>
             <div class="tool-info">
               <h3>MXToolbox</h3>
               <p>High-speed diagnostic suite for domain and IP delivery reputations.</p>
             </div>
           </a>
           <a class="tool-card" href="https://crt.sh" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=crt.sh&sz=64" alt="Crt.sh Logo">
+            <span class="tool-badge">CT</span>
             <div class="tool-info">
               <h3>Crt.sh</h3>
-              <p>Distributed certificate transparency log viewer to map domain sub-structures.</p>
+              <p>Certificate transparency log viewer to map domain sub-structures.</p>
             </div>
           </a>
-
           <a class="tool-card" href="https://www.hybrid-analysis.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=hybrid-analysis.com&sz=64" alt="Hybrid Analysis Logo">
+            <span class="tool-badge">HA</span>
             <div class="tool-info">
               <h3>Hybrid Analysis</h3>
               <p>Free automated sandbox malware analysis service running files in real-time.</p>
             </div>
           </a>
-
           <a class="tool-card" href="https://otx.alienvault.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=alienvault.com&sz=64" alt="AlienVault Logo">
+            <span class="tool-badge">OTX</span>
             <div class="tool-info">
               <h3>AlienVault OTX</h3>
               <p>Collaborative crowd-sourced threat exchange database for indicator sharing.</p>
             </div>
           </a>
-
           <a class="tool-card" href="https://haveibeenpwned.com" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=haveibeenpwned.com&sz=64" alt="HaveIBeenPwned Logo">
+            <span class="tool-badge">HP</span>
             <div class="tool-info">
               <h3>HaveIBeenPwned</h3>
               <p>Leaks repository mapping historical UPN breaches and exposed credentials.</p>
             </div>
           </a>
-
           <a class="tool-card" href="https://nvd.nist.gov" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=nvd.nist.gov&sz=64" alt="NIST NVD Logo">
+            <span class="tool-badge">NVD</span>
             <div class="tool-info">
               <h3>NIST NVD</h3>
               <p>National vulnerability database indexing standardized CVEs and CVSS scoring.</p>
             </div>
           </a>
           <a class="tool-card" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=cisa.gov&sz=64" alt="CISA KEV Logo">
+            <span class="tool-badge">KEV</span>
             <div class="tool-info">
               <h3>CISA KEV</h3>
               <p>Authoritative catalog prioritizing vulnerabilities actively exploited in the wild.</p>
             </div>
           </a>
           <a class="tool-card" href="https://cve.mitre.org" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=mitre.org&sz=64" alt="MITRE CVE Logo">
+            <span class="tool-badge">CVE</span>
             <div class="tool-info">
               <h3>MITRE CVE</h3>
               <p>Standardized international dictionary of documented vulnerabilities.</p>
             </div>
           </a>
-
           <a class="tool-card" href="https://gchq.github.io/CyberChef/" target="_blank">
-            <img class="tool-favicon" src="https://www.google.com/s2/favicons?domain=gchq.github.io&sz=64" alt="CyberChef Logo">
+            <span class="tool-badge">CC</span>
             <div class="tool-info">
               <h3>CyberChef</h3>
-              <p>Flexible web app Swiss Army knife for deobfuscation, encoding, and data operations.</p>
+              <p>Swiss Army knife for deobfuscation, encoding, and data operations.</p>
             </div>
           </a>
         </div>
@@ -917,7 +1088,7 @@
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       <div class="toast-message">Settings saved successfully!</div>
     </div>
-    <div id="reset-toast" class="toast toast-success" style="border-left-color: var(--primary-dark-blue);">
+    <div id="reset-toast" class="toast toast-success">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       <div class="toast-message">Templates restored to defaults!</div>
     </div>

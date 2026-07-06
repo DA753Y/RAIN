@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAIN Hunt Panel</title>
+  <style>
+    :root {
+      --bg-0: #081420;
+      --bg-1: #0B1B2A;
+      --bg-2: #0E2233;
+      --bg-3: #123044;
+      --border: #1C3A50;
+      --border-soft: #14293C;
+      --teal: #2E8CA8;
+      --teal-bright: #45A8C4;
+      --teal-dim: rgba(46, 140, 168, 0.14);
+      --copper: #C28A5C;
+      --copper-bright: #D9A878;
+      --copper-dim: rgba(194, 138, 92, 0.13);
+      --text: #E9F1F5;
+      --muted: #8CA3B5;
+      --font-body: -apple-system, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      --font-mono: "Cascadia Code", Consolas, "JetBrains Mono", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      background-color: var(--bg-0);
+      color: var(--text);
+      font-family: var(--font-body);
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 1rem;
+      background-color: var(--bg-1);
+      border-bottom: 1px solid var(--border-soft);
+      flex-shrink: 0;
+    }
+
+    header img {
+      width: 30px;
+      height: 30px;
+    }
+
+    header h1 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    header p {
+      font-size: 0.62rem;
+      color: var(--copper);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    main {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 0.9rem 1rem;
+    }
+
+    main::-webkit-scrollbar { width: 8px; }
+    main::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 9999px;
+      border: 2px solid var(--bg-0);
+    }
+    main::-webkit-scrollbar-thumb:hover { background: var(--teal); }
+
+    .field-label {
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--copper);
+      margin-bottom: 0.4rem;
+    }
+
+    #ioc-input {
+      width: 100%;
+      padding: 0.55rem 0.7rem;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--bg-1);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    #ioc-input:focus { border-color: var(--teal); }
+
+    #category-label {
+      margin-top: 0.9rem;
+    }
+
+    .cats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-body);
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 0.22rem 0.6rem;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .chip:hover { color: var(--text); border-color: var(--teal); }
+
+    .chip.active {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #FFFFFF;
+    }
+
+    #tools-section { margin-top: 1rem; }
+
+    #tools {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .tool-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--border-soft);
+      border-radius: 7px;
+      background: var(--bg-2);
+      color: #C9D8E2;
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .tool-btn:hover {
+      background: var(--bg-3);
+      border-color: var(--teal);
+      color: #FFFFFF;
+    }
+
+    .tool-btn.yeet {
+      background: var(--copper-dim);
+      border-color: rgba(194, 138, 92, 0.3);
+      color: var(--copper-bright);
+      font-weight: 650;
+    }
+
+    .tool-btn.yeet:hover {
+      border-color: var(--copper);
+      color: #F3D2B0;
+    }
+
+    .sec-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #5F7889;
+      padding: 0.5rem 0.1rem 0.1rem;
+    }
+
+    #empty-state {
+      color: var(--muted);
+      font-size: 0.76rem;
+      padding: 0.75rem 0.2rem;
+    }
+
+    footer {
+      flex-shrink: 0;
+      padding: 0.55rem 1rem;
+      border-top: 1px solid var(--border-soft);
+      background-color: var(--bg-1);
+      font-size: 0.64rem;
+      color: var(--muted);
+    }
+
+    footer kbd {
+      font-family: var(--font-mono);
+      color: var(--teal-bright);
+    }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="icons/icon48.png" alt="RAIN Logo">
+    <div>
+      <h1>RAIN</h1>
+      <p>Hunt Panel</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="field-label">Indicator</div>
+    <input type="text" id="ioc-input" spellcheck="false" autocomplete="off" placeholder="Paste or type an IOC...">
+
+    <div class="field-label hidden" id="category-label">IOC Type</div>
+    <div class="cats" id="cats"></div>
+
+    <div id="tools-section">
+      <div id="empty-state">Paste an indicator above to see hunting tools.</div>
+      <div id="tools"></div>
+    </div>
+  </main>
+
+  <footer>
+    Hotkey <kbd class="hotkey-display">Alt+R</kbd> opens this panel when nothing is highlighted or the page selection cannot be read.
+  </footer>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,13 +1,36 @@
 {
   "manifest_version": 3,
   "name": "RAIN",
-  "version": "1.0",
+  "version": "2.0.0",
   "description": "Right-click Analyst's IOC Navigator is a SOC tool to speed up hunting of IOCs",
-  "permissions": ["contextMenus", "tabs", "scripting", "tabGroups", "storage"],
+  "minimum_chrome_version": "114",
+  "permissions": ["contextMenus", "scripting", "tabGroups", "storage", "activeTab", "sidePanel"],
   "host_permissions": ["https://security.microsoft.com/*"],
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "commands": {
+    "hunt-selection": {
+      "suggested_key": {
+        "default": "Alt+R"
+      },
+      "description": "RAIN: hunt the highlighted IOC"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/icon32.png", "icons/icon48.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -16,11 +39,18 @@
   },
   "action": {
     "default_popup": "options.html",
+    "default_title": "RAIN Analyst Control Center",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
       "48": "icons/icon48.png"
     }
   },
-  "options_page": "options.html"
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
 }
