@@ -146,7 +146,9 @@
     }
 
     .tool-btn {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
       width: 100%;
       text-align: left;
       padding: 0.5rem 0.65rem;
@@ -178,6 +180,37 @@
       border-color: var(--copper);
       color: #F3D2B0;
     }
+
+    .tool-mark {
+      position: relative;
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-1);
+      color: var(--teal-bright);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 22px;
+      overflow: hidden;
+      font-family: var(--font-mono);
+      font-size: 0.5rem;
+      font-weight: 700;
+    }
+
+    .tool-mark img {
+      position: absolute;
+      inset: 2px;
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
+      display: none;
+    }
+
+    .tool-mark.has-icon img { display: block; }
+    .tool-mark.has-icon .tool-letters { visibility: hidden; }
+    .tool-label { min-width: 0; }
 
     .sec-label {
       font-size: 0.62rem;

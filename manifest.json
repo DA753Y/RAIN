@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "RAIN",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Right-click Analyst's IOC Navigator is a SOC tool to speed up hunting of IOCs",
-  "minimum_chrome_version": "114",
-  "permissions": ["contextMenus", "scripting", "tabGroups", "storage", "activeTab", "sidePanel"],
+  "minimum_chrome_version": "116",
+  "permissions": ["contextMenus", "scripting", "tabGroups", "storage", "activeTab", "sidePanel", "favicon"],
   "host_permissions": ["https://security.microsoft.com/*"],
   "background": {
     "service_worker": "background.js"
@@ -27,7 +27,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["icons/icon32.png", "icons/icon48.png"],
+      "resources": ["icons/icon32.png", "icons/icon48.png", "_favicon/*"],
       "matches": ["<all_urls>"]
     }
   ],
