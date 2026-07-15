@@ -8,7 +8,7 @@ $manifestPath = Join-Path $root "manifest.json"
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 
 if (-not $OutputPath) {
-  $OutputPath = Join-Path $root ("dist\RAIN-{0}.zip" -f $manifest.version)
+  $OutputPath = Join-Path $root ("dist/RAIN-{0}.zip" -f $manifest.version)
 }
 $OutputPath = [System.IO.Path]::GetFullPath($OutputPath)
 
@@ -20,10 +20,10 @@ $packageFiles = @(
   "options.js",
   "sidepanel.html",
   "sidepanel.js",
-  "icons\icon16.png",
-  "icons\icon32.png",
-  "icons\icon48.png",
-  "icons\icon128.png"
+  "icons/icon16.png",
+  "icons/icon32.png",
+  "icons/icon48.png",
+  "icons/icon128.png"
 )
 
 foreach ($relativePath in $packageFiles) {
