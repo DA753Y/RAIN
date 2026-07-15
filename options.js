@@ -3,6 +3,7 @@ const textareaDomain = document.getElementById("kql-domain");
 const textareaHash = document.getElementById("kql-hash");
 const textareaAccount = document.getElementById("kql-account");
 const textareaCve = document.getElementById("kql-cve");
+const textareaUserAgent = document.getElementById("kql-useragent");
 
 const btnSave = document.getElementById("btn-save");
 const btnReset = document.getElementById("btn-reset");
@@ -26,6 +27,7 @@ function loadTemplates() {
       textareaHash.value = templates.hash || defaults.hash || "";
       textareaAccount.value = templates.account || defaults.account || "";
       textareaCve.value = templates.cve || defaults.cve || "";
+      textareaUserAgent.value = templates.useragent || defaults.useragent || "";
     });
   });
 }
@@ -36,7 +38,8 @@ function saveTemplates() {
     domain: textareaDomain.value,
     hash: textareaHash.value,
     account: textareaAccount.value,
-    cve: textareaCve.value
+    cve: textareaCve.value,
+    useragent: textareaUserAgent.value
   };
 
   chrome.storage.local.set({ kqlTemplates: customTemplates }, () => {
@@ -54,6 +57,13 @@ function loadHotkeyDisplay() {
     document.querySelectorAll(".hotkey-display").forEach(el => {
       el.textContent = label;
     });
+  });
+}
+
+function loadVersionDisplay() {
+  const version = chrome.runtime.getManifest().version;
+  document.querySelectorAll(".manifest-version").forEach(el => {
+    el.textContent = version;
   });
 }
 
@@ -100,6 +110,7 @@ function resetTemplates() {
         textareaHash.value = defaults.hash || "";
         textareaAccount.value = defaults.account || "";
         textareaCve.value = defaults.cve || "";
+        textareaUserAgent.value = defaults.useragent || "";
         showToast(resetToast);
       });
     }
@@ -128,6 +139,33 @@ function showToast(toastEl) {
     toastTimeouts.delete(toastEl);
   }, 3000);
   toastTimeouts.set(toastEl, timeoutId);
+}
+
+function faviconUrl(pageUrl) {
+  const url = new URL(chrome.runtime.getURL("_favicon/"));
+  url.searchParams.set("pageUrl", pageUrl);
+  url.searchParams.set("size", "32");
+  return url.toString();
+}
+
+function loadToolFavicons() {
+  document.querySelectorAll(".tool-card").forEach(card => {
+    const badge = card.querySelector(".tool-badge");
+    if (!badge || !card.href) return;
+
+    const letters = document.createElement("span");
+    letters.className = "tool-letters";
+    letters.textContent = badge.textContent.trim();
+    badge.textContent = "";
+    badge.appendChild(letters);
+
+    const img = document.createElement("img");
+    img.alt = "";
+    img.addEventListener("load", () => badge.classList.add("has-icon"));
+    img.addEventListener("error", () => img.remove());
+    img.src = faviconUrl(card.href);
+    badge.appendChild(img);
+  });
 }
 
 document.querySelectorAll(".nav-btn").forEach(btn => {
@@ -173,6 +211,8 @@ function init() {
   loadTemplates();
   loadSettings();
   loadHotkeyDisplay();
+  loadVersionDisplay();
+  loadToolFavicons();
   console.log("RAIN Control Center loaded. Sig: datesy");
 }
 

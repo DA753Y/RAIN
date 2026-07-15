@@ -1,4 +1,4 @@
-const TEMPLATE_SCHEMA_VERSION = 2;
+const TEMPLATE_SCHEMA_VERSION = 4;
 
 const DEFAULT_SETTINGS = {
   floatingButton: true,
@@ -40,7 +40,29 @@ let IOC = "CVE_VALUE";
 DeviceTvmSoftwareVulnerabilities
 | where CveId == IOC
 | project DeviceName, OSPlatform, SoftwareName, SoftwareVersion, CveId, VulnerabilitySeverityLevel
-| take 100`
+| take 100`,
+
+  useragent: `// RAIN Parse: User-Agent
+print useragent = "USERAGENT_VALUE"
+| extend Parsed = parse_user_agent(
+    useragent,
+    dynamic(["browser", "os", "device"])
+)
+| project
+    useragent,
+    BrowserFamily = iff(isempty(tostring(Parsed.Browser.Family)), "unknown", tostring(Parsed.Browser.Family)),
+    BrowserMajor = iff(isempty(tostring(Parsed.Browser.MajorVersion)), "unknown", tostring(Parsed.Browser.MajorVersion)),
+    BrowserMinor = iff(isempty(tostring(Parsed.Browser.MinorVersion)), "unknown", tostring(Parsed.Browser.MinorVersion)),
+    OSFamily = iff(isempty(tostring(Parsed.OperatingSystem.Family)), "unknown", tostring(Parsed.OperatingSystem.Family)),
+    OSVersion = case(
+        isempty(tostring(Parsed.OperatingSystem.MajorVersion)) and isempty(tostring(Parsed.OperatingSystem.MinorVersion)), "unknown",
+        isempty(tostring(Parsed.OperatingSystem.MinorVersion)), tostring(Parsed.OperatingSystem.MajorVersion),
+        isempty(tostring(Parsed.OperatingSystem.MajorVersion)), tostring(Parsed.OperatingSystem.MinorVersion),
+        strcat(tostring(Parsed.OperatingSystem.MajorVersion), ".", tostring(Parsed.OperatingSystem.MinorVersion))
+    ),
+    DeviceFamily = iff(isempty(tostring(Parsed.Device.Family)), "unknown", tostring(Parsed.Device.Family)),
+    DeviceBrand = iff(isempty(tostring(Parsed.Device.Brand)), "unknown", tostring(Parsed.Device.Brand)),
+    DeviceModel = iff(isempty(tostring(Parsed.Device.Model)), "unknown", tostring(Parsed.Device.Model))`
 };
 
 const categoryLabels = {
@@ -49,6 +71,7 @@ const categoryLabels = {
   hash: "File Hash",
   account: "Account/Email",
   cve: "Vulnerability (CVE)",
+  useragent: "User-Agent",
   general: "Universal Tools"
 };
 
@@ -57,7 +80,8 @@ const categoryShortLabels = {
   domain: "Domain",
   hash: "Hash",
   account: "Account",
-  cve: "CVE"
+  cve: "CVE",
+  useragent: "UA"
 };
 
 const huntingTools = {
@@ -196,6 +220,28 @@ const huntingTools = {
       url: "https://security.microsoft.com/v2/advanced-hunting"
     }
   ],
+  useragent: [
+    {
+      id: "hunt-useragent-ahq",
+      title: "Parse User-Agent in Defender AHQ",
+      url: "https://security.microsoft.com/v2/advanced-hunting"
+    },
+    {
+      id: "hunt-useragent-cyberchef",
+      title: "Parse User-Agent in CyberChef",
+      url: "https://gchq.github.io/CyberChef/#recipe=Parse_User_Agent()&input="
+    },
+    {
+      id: "hunt-useragent-google",
+      title: "Look up exact string on Google",
+      url: "https://www.google.com/search?q=%22{IOC}%22"
+    },
+    {
+      id: "hunt-useragent-github",
+      title: "Look up exact string on GitHub",
+      url: "https://github.com/search?q=%22{IOC}%22&type=code"
+    }
+  ],
   general: [
     {
       id: "hunt-general-cyberchef",
@@ -206,6 +252,16 @@ const huntingTools = {
 };
 
 const YEET_CATEGORIES = ["ip", "domain", "hash", "cve"];
+const AHQ_PENDING_TTL_MS = 10 * 60 * 1000;
+const KQL_PLACEHOLDER_SOURCE = "IP_VALUE|DOMAIN_VALUE|HASH_VALUE|ACCOUNT_VALUE|CVE_VALUE|USERAGENT_VALUE";
+const KQL_IOC_VARIABLE = "__RAIN_IOC_VALUE";
+
+const knownUserAgentPattern = /^(?:Mozilla|Opera|Dalvik|curl|Wget|PostmanRuntime|python-requests|Go-http-client|Java|okhttp|Googlebot|bingbot|DuckDuckBot|YandexBot|facebookexternalhit|Slackbot(?:-LinkExpanding)?|Discordbot|TelegramBot|Amazonbot|Applebot)\/[^\s]+(?:\s|$)/i;
+const genericUserAgentPattern = /^[a-z][a-z0-9._-]*\/[^\s()]+(?:\s+\([^)]*\)|\s+[a-z][a-z0-9._-]*\/[^\s()]+)+/i;
+
+function looksLikeUserAgent(text) {
+  return knownUserAgentPattern.test(text) || genericUserAgentPattern.test(text);
+}
 
 function cleanIOC(text) {
   if (!text) return "";
@@ -218,73 +274,165 @@ function cleanIOC(text) {
   clean = clean.replace(/^hxxp/i, "http");
   clean = clean.replace(/^meows/i, "https");
   clean = clean.replace(/^meow/i, "http");
+  const unquoted = clean.replace(/^["']+|["']+$/g, "");
+  if (looksLikeUserAgent(unquoted)) return unquoted;
   clean = clean.replace(/^["'(<\[]+|["')>\]]+$/g, "");
 
   return clean;
 }
 
-function base64url(str) {
+function base64ForUrl(str) {
   const bytes = new TextEncoder().encode(str);
   let binString = "";
   for (let i = 0; i < bytes.length; i++) {
     binString += String.fromCharCode(bytes[i]);
   }
   const b64 = btoa(binString);
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return encodeURIComponent(b64);
+}
+
+function isValidIpv4(text) {
+  const parts = text.split(".");
+  return parts.length === 4 && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255);
+}
+
+function isValidHostname(hostname) {
+  const host = hostname.replace(/^\[|\]$/g, "");
+  if (!host || host.length > 253) return false;
+  if (isValidIpv4(host)) return true;
+  if (host.includes(":")) {
+    return /^(?=.*:)(?:[a-fA-F0-9]{0,4}:){1,7}[a-fA-F0-9]{0,4}$/.test(host);
+  }
+  const labels = host.split(".");
+  if (labels.length < 2) return false;
+  return labels.every(label => (
+    label.length >= 1 &&
+    label.length <= 63 &&
+    /^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(label)
+  ));
+}
+
+function looksLikeDomainOrUrl(text) {
+  if (/\s/.test(text)) return false;
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+    return (parsed.protocol === "http:" || parsed.protocol === "https:") && isValidHostname(parsed.hostname);
+  } catch (_) {
+    return false;
+  }
 }
 
 function getUrlForTool(tool, selectedText) {
   const encoded = encodeURIComponent(selectedText);
+  const targetUrl = tool.url;
   if (tool.id.includes("cyberchef")) {
-    return tool.url + base64url(selectedText);
+    return targetUrl + base64ForUrl(selectedText);
   }
-  if (tool.url.includes("{IOC}")) {
-    return tool.url.replace("{IOC}", encoded);
+  if (targetUrl.includes("{IOC}")) {
+    return targetUrl.replace("{IOC}", encoded);
   }
-  return tool.url + encoded;
+  return targetUrl + encoded;
 }
 
 function classifyIOC(text) {
   const clean = cleanIOC(text);
   if (!clean) return null;
 
-  const ipv4Pattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
   const ipv6Pattern = /^(?=.*:)(?:[a-fA-F0-9]{0,4}:){1,7}[a-fA-F0-9]{0,4}$/;
-  const domainPattern = /^(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/.*)?$/;
   const hashPattern = /^(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$/;
   const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   const cvePattern = /^CVE-\d{4}-\d{4,}$/i;
 
-  if (ipv4Pattern.test(clean)) return "ip";
+  if (isValidIpv4(clean)) return "ip";
   if (ipv6Pattern.test(clean) && (clean.match(/::/g) || []).length <= 1 && !clean.includes(":::")) return "ip";
   if (cvePattern.test(clean)) return "cve";
   if (hashPattern.test(clean)) return "hash";
   if (emailPattern.test(clean)) return "account";
-  if (domainPattern.test(clean)) return "domain";
+  if (looksLikeUserAgent(clean)) return "useragent";
+  if (looksLikeDomainOrUrl(clean)) return "domain";
 
   return null;
 }
 
-// Escape only what breaks out of a double-quoted KQL string literal;
-// other escapes (', `) are not valid KQL sequences and would corrupt the IOC.
-function sanitizeForKql(text) {
-  return text
+function kqlStringLiteral(text) {
+  const escaped = String(text)
+    .replace(/[\r\n\u2028\u2029]+/g, " ")
     .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"');
+  return `"${escaped}"`;
+}
+
+function kqlQuoteAt(text, offset) {
+  let quote = null;
+  for (let i = 0; i < offset; i++) {
+    const char = text[i];
+    if (char === "\\") {
+      i++;
+    } else if (quote) {
+      if (char === quote) quote = null;
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    }
+  }
+  return quote;
+}
+
+// Attacker-controlled text appears only in a declaration built here. Templates
+// receive a fixed variable name, so even unusual custom syntax cannot move IOC
+// text out of the controlled string literal.
+function renderKqlTemplate(template, ioc) {
+  if (typeof template !== "string") throw new TypeError("KQL template must be text.");
+  const anyPlaceholder = new RegExp(KQL_PLACEHOLDER_SOURCE);
+  if (!anyPlaceholder.test(template)) return template;
+  if (template.includes(KQL_IOC_VARIABLE)) {
+    throw new Error(`${KQL_IOC_VARIABLE} is reserved for RAIN.`);
+  }
+  const literal = kqlStringLiteral(ioc);
+  const quotedPlaceholder = new RegExp(`(["'])(${KQL_PLACEHOLDER_SOURCE})\\1`, "g");
+  let rendered = template.replace(quotedPlaceholder, (match, quote, placeholder, offset, source) => {
+    if (kqlQuoteAt(source, offset)) {
+      throw new Error(`${placeholder} must be a standalone quoted string or bare token.`);
+    }
+    return KQL_IOC_VARIABLE;
+  });
+  const remainingPlaceholder = new RegExp(KQL_PLACEHOLDER_SOURCE, "g");
+  rendered = rendered.replace(remainingPlaceholder, (placeholder, offset, source) => {
+    if (kqlQuoteAt(source, offset)) {
+      throw new Error(`${placeholder} must be a standalone quoted string or bare token.`);
+    }
+    return KQL_IOC_VARIABLE;
+  });
+  return `let ${KQL_IOC_VARIABLE} = ${literal};\n${rendered}`;
 }
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(["kqlTemplates", "templatesVersion", "rainSettings"], (data) => {
     if (!data.kqlTemplates) {
       chrome.storage.local.set({ kqlTemplates: kqlTemplates, templatesVersion: TEMPLATE_SCHEMA_VERSION });
-    } else if (!data.templatesVersion) {
+    } else {
+      const migrated = { ...data.kqlTemplates };
+      let changed = data.templatesVersion !== TEMPLATE_SCHEMA_VERSION;
+
       // One-time v1.0 -> v1.1 migration: only replace the CVE template if it is
       // the old broken default (identified by its header comment), never a custom one.
-      const migrated = { ...data.kqlTemplates };
-      if (migrated.cve && migrated.cve.includes("// RAIN Hunt: Vulnerability (CVE)") && migrated.cve.includes("Timestamp")) {
+      if (!data.templatesVersion && migrated.cve && migrated.cve.includes("// RAIN Hunt: Vulnerability (CVE)") && migrated.cve.includes("Timestamp")) {
         migrated.cve = kqlTemplates.cve;
+        changed = true;
       }
-      chrome.storage.local.set({ kqlTemplates: migrated, templatesVersion: TEMPLATE_SCHEMA_VERSION });
+      if (!migrated.useragent) {
+        migrated.useragent = kqlTemplates.useragent;
+        changed = true;
+      } else if (
+        migrated.useragent.includes("// RAIN Parse: User-Agent") &&
+        migrated.useragent.includes("| project UserAgent, Browser = Parsed.Browser, OperatingSystem = Parsed.OperatingSystem, Device = Parsed.Device")
+      ) {
+        // Replace only RAIN's original v3 UA template, never a custom query.
+        migrated.useragent = kqlTemplates.useragent;
+        changed = true;
+      }
+      if (changed) {
+        chrome.storage.local.set({ kqlTemplates: migrated, templatesVersion: TEMPLATE_SCHEMA_VERSION });
+      }
     }
 
     if (!data.rainSettings) {
@@ -331,17 +479,38 @@ chrome.runtime.onInstalled.addListener(() => {
 // Pending Defender AHQ injections live in storage.session so they survive
 // service worker suspension while the (slow) portal tab is still loading.
 function setPendingInjection(tabId, ioc, category) {
-  chrome.storage.session.set({ [`ahq-${tabId}`]: { ioc, category } });
+  chrome.storage.session.set({ [`ahq-${tabId}`]: { ioc, category, at: Date.now() } }, () => {
+    if (chrome.runtime.lastError) {
+      console.error("RAIN: Failed to retain pending Defender query:", chrome.runtime.lastError);
+    }
+  });
 }
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+function isDefenderUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.hostname === "security.microsoft.com";
+  } catch (_) {
+    return false;
+  }
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status !== "complete") return;
   const key = `ahq-${tabId}`;
   chrome.storage.session.get(key, (data) => {
-    if (data[key]) {
+    const pending = data[key];
+    if (!pending) return;
+    if (pending.at && Date.now() - pending.at > AHQ_PENDING_TTL_MS) {
       chrome.storage.session.remove(key);
-      injectKQLQuery(tabId, data[key].ioc, data[key].category);
+      return;
     }
+    // Authentication pages may complete before Defender does. Keep the entry
+    // through those redirects and consume it only once the target origin is ready.
+    if (!isDefenderUrl(tab?.url || changeInfo.url || "")) return;
+    injectKQLQuery(tabId, pending.ioc, pending.category, () => {
+      chrome.storage.session.remove(key);
+    });
   });
 });
 
@@ -349,7 +518,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(`ahq-${tabId}`);
 });
 
-function injectKQLQuery(tabId, ioc, category) {
+function injectKQLQuery(tabId, ioc, category, onScheduled) {
   chrome.tabs.get(tabId, (tab) => {
     const err = chrome.runtime.lastError;
     if (err || !tab || !tab.url) {
@@ -357,14 +526,8 @@ function injectKQLQuery(tabId, ioc, category) {
       return;
     }
 
-    try {
-      const urlObj = new URL(tab.url);
-      if (urlObj.protocol !== "https:" || urlObj.hostname !== "security.microsoft.com") {
-        console.error("RAIN: Script injection blocked. Target tab URL origin mismatch:", tab.url);
-        return;
-      }
-    } catch (e) {
-      console.error("RAIN: Invalid target tab URL:", e);
+    if (!isDefenderUrl(tab.url)) {
+      console.error("RAIN: Script injection blocked. Target tab URL origin mismatch:", tab.url);
       return;
     }
 
@@ -375,48 +538,51 @@ function injectKQLQuery(tabId, ioc, category) {
         activeTemplates[key] = stored[key] || kqlTemplates[key];
       }
 
-      const sanitizedIoc = sanitizeForKql(ioc);
+      const queryTemplate = activeTemplates[category] || activeTemplates.ip;
+      let finalQuery;
+      try {
+        finalQuery = renderKqlTemplate(queryTemplate, ioc);
+      } catch (error) {
+        console.warn("RAIN: Custom KQL template has an unsafe placeholder context; using the default template.", error);
+        finalQuery = renderKqlTemplate(kqlTemplates[category] || kqlTemplates.ip, ioc);
+      }
 
       chrome.scripting.executeScript({
         target: { tabId: tabId },
         world: "MAIN",
-        func: (iocValue, categoryValue, templates) => {
-          const queryTemplate = templates[categoryValue] || templates.ip;
-          // Function replacement so "$" sequences in the IOC are inserted literally.
-          const finalQuery = queryTemplate.replace(/IP_VALUE|DOMAIN_VALUE|HASH_VALUE|ACCOUNT_VALUE|CVE_VALUE/g, () => iocValue);
-
+        func: (queryValue) => {
           let attempts = 0;
           const interval = setInterval(() => {
-            const models = window.monaco?.editor?.getModels?.();
-            if (models?.length > 0) {
-              models[0].setValue(finalQuery);
+            const editors = window.monaco?.editor?.getEditors?.() || [];
+            const focused = editors.find(editor => editor.hasTextFocus?.());
+            const visible = editors.filter(editor => {
+              const node = editor.getDomNode?.();
+              return node?.isConnected && node.getClientRects?.().length > 0;
+            });
+            const editor = focused ||
+              (visible.length === 1 ? visible[0] : null) ||
+              (editors.length === 1 ? editors[0] : null);
+            const model = editor?.getModel?.();
+            if (model) {
+              model.setValue(queryValue);
               console.log("RAIN: KQL query injected successfully.");
               clearInterval(interval);
-
-              // The portal sometimes resets the editor while it finishes loading.
-              // Only re-set if our IOC vanished, so analyst edits are never stomped.
-              [1000, 2500, 4000].forEach(delay => {
-                setTimeout(() => {
-                  if (models[0] && !models[0].getValue().includes(iocValue)) {
-                    models[0].setValue(finalQuery);
-                    console.log(`RAIN: Query reinforced after ${delay}ms`);
-                  }
-                }, delay);
-              });
             } else {
               if (++attempts > 60) {
-                console.warn("RAIN: Monaco editor not loaded in time.");
+                console.warn("RAIN: No unambiguous Monaco editor was available in time.");
                 clearInterval(interval);
               }
             }
           }, 500);
         },
-        args: [sanitizedIoc, category, activeTemplates]
+        args: [finalQuery]
       }, () => {
         const injectErr = chrome.runtime.lastError;
         if (injectErr) {
           console.error("RAIN: Script injection failed:", injectErr);
+          return;
         }
+        if (onScheduled) onScheduled();
       });
     });
   });
@@ -433,17 +599,82 @@ function categoryOfTool(toolId) {
   return null;
 }
 
+const TOOL_INITIALS = {
+  "hunt-ip-talos": "TA",
+  "hunt-ip-vt": "VT",
+  "hunt-ip-urlscan": "US",
+  "hunt-ip-abuseipdb": "AB",
+  "hunt-ip-shodan": "SH",
+  "hunt-ip-censys": "CE",
+  "hunt-ip-ahq": "MD",
+  "hunt-domain-vt": "VT",
+  "hunt-domain-urlscan": "US",
+  "hunt-domain-talos": "TA",
+  "hunt-domain-urlvoid": "UV",
+  "hunt-domain-mxtoolbox": "MX",
+  "hunt-domain-crt": "CT",
+  "hunt-domain-censys": "CE",
+  "hunt-domain-ahq": "MD",
+  "hunt-hash-vt": "VT",
+  "hunt-hash-hybrid": "HA",
+  "hunt-hash-alienvault": "OTX",
+  "hunt-hash-ahq": "MD",
+  "hunt-account-hibp": "HP",
+  "hunt-account-ahq": "MD",
+  "hunt-cve-nvd": "NVD",
+  "hunt-cve-cisa": "KEV",
+  "hunt-cve-mitre": "CVE",
+  "hunt-cve-ahq": "MD",
+  "hunt-useragent-ahq": "MD",
+  "hunt-useragent-cyberchef": "CC",
+  "hunt-useragent-google": "G",
+  "hunt-useragent-github": "GH",
+  "hunt-general-cyberchef": "CC"
+};
+
+function toolForClient(tool) {
+  let faviconUrl = tool.faviconUrl || "";
+  if (!faviconUrl) {
+    try {
+      faviconUrl = new URL(tool.url).origin;
+    } catch (_) {}
+  }
+  return {
+    id: tool.id,
+    title: tool.title,
+    initials: TOOL_INITIALS[tool.id] || "?",
+    faviconUrl
+  };
+}
+
+function createTabSafely(options) {
+  return new Promise(resolve => {
+    chrome.tabs.create(options, (newTab) => {
+      const err = chrome.runtime.lastError;
+      if (err || !newTab?.id) {
+        console.error("RAIN: Failed to open hunting tab:", err || "No tab was returned.");
+        resolve(null);
+        return;
+      }
+      resolve(newTab);
+    });
+  });
+}
+
+function createToolTab(tool, ioc, category, active = true) {
+  return createTabSafely({ url: tool.id.includes("ahq") ? tool.url : getUrlForTool(tool, ioc), active })
+    .then(newTab => {
+      if (newTab && tool.id.includes("ahq")) {
+        setPendingInjection(newTab.id, ioc, category);
+      }
+      return newTab;
+    });
+}
+
 function huntWithTool(toolId, ioc) {
   const tool = findTool(toolId);
   if (!tool || !ioc) return;
-
-  if (tool.id.includes("ahq")) {
-    chrome.tabs.create({ url: tool.url }, (newTab) => {
-      setPendingInjection(newTab.id, ioc, categoryOfTool(toolId));
-    });
-  } else {
-    chrome.tabs.create({ url: getUrlForTool(tool, ioc) });
-  }
+  return createToolTab(tool, ioc, categoryOfTool(toolId));
 }
 
 function yeetCategory(category, ioc) {
@@ -452,24 +683,17 @@ function yeetCategory(category, ioc) {
 
   const createdTabIds = [];
 
-  Promise.all(tools.map(tool => {
-    return new Promise(resolve => {
-      if (tool.id.includes("ahq")) {
-        chrome.tabs.create({ url: tool.url, active: false }, newTab => {
-          setPendingInjection(newTab.id, ioc, category);
-          createdTabIds.push(newTab.id);
-          resolve();
-        });
-      } else {
-        chrome.tabs.create({ url: getUrlForTool(tool, ioc), active: false }, newTab => {
-          createdTabIds.push(newTab.id);
-          resolve();
-        });
-      }
+  Promise.all(tools.map(tool => createToolTab(tool, ioc, category, false))).then(createdTabs => {
+    createdTabs.forEach(tab => {
+      if (tab?.id) createdTabIds.push(tab.id);
     });
-  })).then(() => {
     if (createdTabIds.length === 0) return;
     chrome.tabs.group({ tabIds: createdTabIds }, groupId => {
+      const groupErr = chrome.runtime.lastError;
+      if (groupErr || typeof groupId !== "number") {
+        console.error("RAIN: Failed to group hunting tabs:", groupErr || "No group was returned.");
+        return;
+      }
       chrome.tabGroups.update(groupId, {
         title: `${category.charAt(0).toUpperCase() + category.slice(1)} Search`,
         color: {
@@ -480,6 +704,10 @@ function yeetCategory(category, ioc) {
           cve: "red"
         }[category] || "grey",
         collapsed: true
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("RAIN: Failed to label hunting tab group:", chrome.runtime.lastError);
+        }
       });
     });
   });
@@ -515,7 +743,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ? message.overrideCategory
         : detected;
       const tools = category
-        ? huntingTools[category].map(t => ({ id: t.id, title: t.title }))
+        ? huntingTools[category].map(toolForClient)
         : [];
       sendResponse({
         ioc,
@@ -523,7 +751,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         detectedCategory: detected,
         categoryLabel: category ? categoryLabels[category] : "Select IOC type",
         tools,
-        generalTools: huntingTools.general.map(t => ({ id: t.id, title: t.title })),
+        generalTools: huntingTools.general.map(toolForClient),
         canYeet: YEET_CATEGORIES.includes(category),
         categories: Object.keys(categoryShortLabels).map(id => ({
           id,
@@ -543,18 +771,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case "openShortcuts":
-      chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+      createTabSafely({ url: "chrome://extensions/shortcuts" });
       break;
   }
   // All responses above are synchronous; no open channel is kept.
 });
 
-// Opens the RAIN side panel, optionally prefilled with an IOC.
-// storage.session is set fire-and-forget and sidePanel.open() is called in
-// the same tick: open() requires the user-gesture context, which survives
-// chrome API callbacks but should not wait on further async hops.
-function openHuntPanel(tabId, ioc) {
-  chrome.storage.session.set({ pendingPanelIoc: { ioc: ioc || "", at: Date.now() } });
+function pendingPanelKey(windowId) {
+  return `pendingPanelIoc-${windowId}`;
+}
+
+// Opens the RAIN side panel, optionally prefilled with an IOC. A global side
+// panel is one instance per browser window, so pending state uses that same
+// boundary and is consumed by the matching panel after it opens.
+function openHuntPanel(tabId, windowId, ioc) {
+  if (typeof windowId === "number") {
+    chrome.storage.session.set({
+      [pendingPanelKey(windowId)]: { ioc: ioc || "", at: Date.now() }
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("RAIN: Failed to prefill side panel:", chrome.runtime.lastError);
+      }
+    });
+  } else {
+    console.warn("RAIN: Side-panel prefill skipped because the browser window was unavailable.");
+  }
   chrome.sidePanel.open({ tabId }).catch(err => {
     console.error("RAIN: side panel failed to open:", err);
   });
@@ -600,7 +841,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
     if (chrome.runtime.lastError) {
       // Restricted page (chrome://, web store): the page can't host the
       // in-page menu, but the side panel can still hunt a pasted IOC.
-      openHuntPanel(tab.id, "");
+      openHuntPanel(tab.id, tab.windowId, "");
       return;
     }
 
@@ -608,7 +849,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
 
     if (!text.trim()) {
       // Nothing readable on the page: hunt from the side panel instead.
-      openHuntPanel(tab.id, "");
+      openHuntPanel(tab.id, tab.windowId, "");
       return;
     }
 
@@ -617,7 +858,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
         // No frame could show the in-page menu (content script missing, or
         // the selection lives somewhere the page menu can't anchor to):
         // open the side panel with the selection prefilled.
-        openHuntPanel(tab.id, cleanIOC(text));
+        openHuntPanel(tab.id, tab.windowId, cleanIOC(text));
       }
     });
   });

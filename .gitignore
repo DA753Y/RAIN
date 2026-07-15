@@ -1,0 +1,33 @@
+# Dependencies and test output
+node_modules/
+coverage/
+
+# Generated extension packages
+dist/
+*.crx
+
+# Signing keys and local environment files
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# Local Codex and security-review state
+.agents/
+.codex/
+.codex-security-staging/
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*~

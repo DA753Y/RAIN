@@ -614,6 +614,7 @@
     }
 
     .tool-badge {
+      position: relative;
       width: 30px;
       height: 30px;
       border-radius: 7px;
@@ -628,7 +629,20 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      overflow: hidden;
     }
+
+    .tool-badge img {
+      position: absolute;
+      inset: 4px;
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      display: none;
+    }
+
+    .tool-badge.has-icon img { display: block; }
+    .tool-badge.has-icon .tool-letters { visibility: hidden; }
 
     .tool-card:hover .tool-badge {
       color: var(--copper-bright);
@@ -705,7 +719,7 @@
 
     <div class="header-meta">
       <div class="pill">Hunt hotkey <kbd class="hotkey-display">Alt+R</kbd></div>
-      <div class="pill">v2.0.0</div>
+      <div class="pill">v<span class="manifest-version">2.1.0</span></div>
     </div>
   </header>
 
@@ -731,7 +745,7 @@
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
           <span id="btn-reset-label">Reset Defaults</span>
         </button>
-        <div class="sidebar-version">RAIN v2.0.0</div>
+        <div class="sidebar-version">RAIN v<span class="manifest-version">2.1.0</span></div>
       </div>
     </div>
 
@@ -740,7 +754,7 @@
       <!-- ============ KQL TEMPLATES ============ -->
       <div id="queries" class="tab-content">
         <h2 class="section-title">KQL Templates</h2>
-        <p class="section-description">Customize the queries inserted into Defender Advanced Hunting. Keep the placeholder in the query; it is replaced with the cleaned IOC. Queries are inserted, never auto-run.</p>
+        <p class="section-description">Customize the queries inserted into Defender Advanced Hunting. Use the placeholder as a standalone quoted value or bare token; RAIN replaces it with one safely quoted KQL string. Queries are inserted, never auto-run.</p>
 
         <div class="editor-tabs">
           <button class="editor-tab-btn active" data-editor="ip">IP Address</button>
@@ -748,6 +762,7 @@
           <button class="editor-tab-btn" data-editor="hash">File Hash</button>
           <button class="editor-tab-btn" data-editor="account">Account / Email</button>
           <button class="editor-tab-btn" data-editor="cve">Vulnerability (CVE)</button>
+          <button class="editor-tab-btn" data-editor="useragent">User-Agent</button>
         </div>
 
         <div id="editor-ip" class="editor-container active">
@@ -797,6 +812,16 @@
           </div>
           <div class="textarea-wrapper">
             <textarea id="kql-cve" class="kql-textarea" spellcheck="false" placeholder="Write custom KQL here..."></textarea>
+          </div>
+        </div>
+
+        <div id="editor-useragent" class="editor-container">
+          <div class="editor-header">
+            <div class="editor-label">User-Agent Parser Template</div>
+            <div class="placeholder-badge">USERAGENT_VALUE</div>
+          </div>
+          <div class="textarea-wrapper">
+            <textarea id="kql-useragent" class="kql-textarea" spellcheck="false" placeholder="Write custom KQL here..."></textarea>
           </div>
         </div>
 
@@ -857,7 +882,7 @@
         <div class="doc-card">
           <ul class="doc-list">
             <li><strong>Right-click menu:</strong> highlight an IOC, right-click, and choose <code>RAIN - Hunt IOC</code>. The menu lists every category, so select the one that matches the indicator. If a site shows its own right-click menu instead, hold <kbd>Shift</kbd> while right-clicking to get the browser menu.</li>
-            <li><strong>Floating button:</strong> highlight text and click the RAIN button that appears beside it. RAIN classifies the indicator automatically and shows the matching tools. If the detected type is wrong, or the indicator wasn't recognized, switch it with the type selector at the top of the menu. Press <kbd>Esc</kbd> or click elsewhere to dismiss.</li>
+            <li><strong>Floating button:</strong> highlight text and click the RAIN button that appears beside it. RAIN classifies the indicator automatically and shows the matching tools. If the detected type is wrong, or the indicator wasn't recognized, switch it with the type selector at the top of the menu. Drag the menu by its header to move it; RAIN keeps it within the visible page. Press <kbd>Esc</kbd> or click elsewhere to dismiss.</li>
             <li><strong>Hunt hotkey (<kbd class="hotkey-display">Alt+R</kbd>):</strong> opens the same menu for the highlighted text. Change the key in Settings.</li>
             <li><strong>Side panel:</strong> docks to the browser window whenever the in-page menu isn't possible: nothing highlighted, browser pages, tabs opened before RAIN was installed, or portals that hide their selection. It opens prefilled with the selection where RAIN can read it. Open it any time from the browser's side panel menu: paste an indicator, adjust the type, and hunt.</li>
           </ul>
@@ -872,6 +897,7 @@
             <li><strong>File hashes:</strong> MD5, SHA-1, and SHA-256, detected by length.</li>
             <li><strong>Accounts &amp; emails:</strong> email addresses and UPNs.</li>
             <li><strong>Vulnerabilities:</strong> CVE identifiers, e.g. <code>CVE-2024-21412</code>.</li>
+            <li><strong>User-Agent strings:</strong> common browser, crawler, command-line client, and application user agents. Parse through Microsoft Defender's KQL <code>parse_user_agent()</code> function or GCHQ CyberChef's <code>Parse User Agent</code> recipe, then pivot to exact-string lookups when needed.</li>
           </ul>
         </div>
 
@@ -1076,6 +1102,20 @@
             <div class="tool-info">
               <h3>CyberChef</h3>
               <p>Swiss Army knife for deobfuscation, encoding, and data operations.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://www.google.com" target="_blank">
+            <span class="tool-badge">G</span>
+            <div class="tool-info">
+              <h3>Google</h3>
+              <p>Exact-string web lookup for identifying documented crawlers, clients, and unusual user agents.</p>
+            </div>
+          </a>
+          <a class="tool-card" href="https://github.com" target="_blank">
+            <span class="tool-badge">GH</span>
+            <div class="tool-info">
+              <h3>GitHub</h3>
+              <p>Exact-string code lookup for tracing user agents to public clients, libraries, and implementations.</p>
             </div>
           </a>
         </div>

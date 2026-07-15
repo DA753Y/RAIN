@@ -32,6 +32,7 @@
 
   const MAX_SELECTION_LEN = 500;
   const Z_MAX = "2147483647";
+  const VIEWPORT_MARGIN = 8;
 
   let host = null;
   let ui = null; // { fab, menu }
@@ -72,8 +73,10 @@
         .rain-fab.visible { display: flex; }
 
         .rain-menu {
-          min-width: 240px;
-          max-width: 320px;
+          width: min(320px, calc(100vw - 16px));
+          min-width: min(240px, calc(100vw - 16px));
+          max-height: calc(100vh - 16px);
+          flex-direction: column;
           background: #0B1B2A;
           border: 1px solid #1C3A50;
           border-radius: 10px;
@@ -81,13 +84,31 @@
           overflow: hidden;
           display: none;
         }
-        .rain-menu.visible { display: block; }
+        .rain-menu.visible { display: flex; }
 
         .rain-head {
           padding: 9px 12px 8px;
           border-bottom: 1px solid #14293C;
           background: #0E2233;
+          flex-shrink: 0;
+          touch-action: none;
+          user-select: none;
         }
+        .rain-head-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .rain-drag-hint {
+          color: #5F7889;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.4px;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+        .rain-drag-hint::before { content: "⠿ "; font-size: 12px; }
         .rain-cat {
           font-size: 10px;
           font-weight: 700;
@@ -102,6 +123,7 @@
           color: #E9F1F5;
           word-break: break-all;
           cursor: copy;
+          user-select: text;
         }
         .rain-ioc:hover { color: #45A8C4; }
 
@@ -132,6 +154,7 @@
         .rain-items {
           padding: 5px;
           max-height: 320px;
+          min-height: 0;
           overflow-y: auto;
           scrollbar-width: thin;
           scrollbar-color: #1C3A50 transparent;
@@ -145,7 +168,9 @@
         }
         .rain-items::-webkit-scrollbar-thumb:hover { background: #2E8CA8; }
         .rain-item {
-          display: block;
+          display: flex;
+          align-items: center;
+          gap: 8px;
           width: 100%;
           text-align: left;
           padding: 7px 9px;
@@ -163,6 +188,35 @@
           font-weight: 600;
         }
         .rain-item.rain-yeet:hover { background: rgba(194, 138, 92, 0.14); color: #F3D2B0; }
+        .rain-tool-mark {
+          position: relative;
+          width: 20px;
+          height: 20px;
+          border: 1px solid #1C3A50;
+          border-radius: 5px;
+          background: #0E2233;
+          color: #45A8C4;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 20px;
+          overflow: hidden;
+          font-family: Consolas, "Cascadia Code", monospace;
+          font-size: 7.5px;
+          font-weight: 700;
+          letter-spacing: -0.2px;
+        }
+        .rain-tool-mark img {
+          position: absolute;
+          inset: 2px;
+          width: 14px;
+          height: 14px;
+          object-fit: contain;
+          display: none;
+        }
+        .rain-tool-mark.has-icon img { display: block; }
+        .rain-tool-mark.has-icon .rain-tool-letters { visibility: hidden; }
+        .rain-item-label { min-width: 0; }
         .rain-sec-label {
           font-size: 9px;
           font-weight: 700;
@@ -206,6 +260,75 @@
     return Math.max(min, Math.min(value, max));
   }
 
+  function faviconUrl(pageUrl, size = 32) {
+    if (!pageUrl) return "";
+    const url = new URL(chrome.runtime.getURL("_favicon/"));
+    url.searchParams.set("pageUrl", pageUrl);
+    url.searchParams.set("size", String(size));
+    return url.toString();
+  }
+
+  function createToolMark(tool) {
+    const mark = document.createElement("span");
+    mark.className = "rain-tool-mark";
+    const letters = document.createElement("span");
+    letters.className = "rain-tool-letters";
+    letters.textContent = tool?.initials || "?";
+    mark.appendChild(letters);
+
+    if (tool?.faviconUrl) {
+      const img = document.createElement("img");
+      img.alt = "";
+      img.addEventListener("load", () => mark.classList.add("has-icon"));
+      img.addEventListener("error", () => img.remove());
+      img.src = faviconUrl(tool.faviconUrl);
+      mark.appendChild(img);
+    }
+    return mark;
+  }
+
+  function keepMenuInViewport(preferredLeft, preferredTop) {
+    if (!ui || !ui.menu.classList.contains("visible")) return;
+    const rect = ui.menu.getBoundingClientRect();
+    const maxLeft = Math.max(VIEWPORT_MARGIN, window.innerWidth - rect.width - VIEWPORT_MARGIN);
+    const maxTop = Math.max(VIEWPORT_MARGIN, window.innerHeight - rect.height - VIEWPORT_MARGIN);
+    const left = Number.isFinite(preferredLeft) ? preferredLeft : rect.left;
+    const top = Number.isFinite(preferredTop) ? preferredTop : rect.top;
+    ui.menu.style.left = clamp(left, VIEWPORT_MARGIN, maxLeft) + "px";
+    ui.menu.style.top = clamp(top, VIEWPORT_MARGIN, maxTop) + "px";
+  }
+
+  function makeMenuDraggable(head, menu) {
+    let drag = null;
+
+    head.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("button, .rain-ioc")) return;
+      const rect = menu.getBoundingClientRect();
+      drag = {
+        pointerId: e.pointerId,
+        offsetX: e.clientX - rect.left,
+        offsetY: e.clientY - rect.top
+      };
+      head.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    head.addEventListener("pointermove", (e) => {
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      keepMenuInViewport(e.clientX - drag.offsetX, e.clientY - drag.offsetY);
+      e.preventDefault();
+    });
+
+    const finishDrag = (e) => {
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      if (head.hasPointerCapture(e.pointerId)) head.releasePointerCapture(e.pointerId);
+      drag = null;
+    };
+    head.addEventListener("pointerup", finishDrag);
+    head.addEventListener("pointercancel", finishDrag);
+  }
+
   function hideAll() {
     if (!ui) return;
     ui.fab.classList.remove("visible");
@@ -243,9 +366,17 @@
 
       const head = document.createElement("div");
       head.className = "rain-head";
+      const headTop = document.createElement("div");
+      headTop.className = "rain-head-top";
       const cat = document.createElement("div");
       cat.className = "rain-cat";
       cat.textContent = res.categoryLabel;
+      const dragHint = document.createElement("div");
+      dragHint.className = "rain-drag-hint";
+      dragHint.textContent = "Drag";
+      dragHint.setAttribute("aria-hidden", "true");
+      headTop.appendChild(cat);
+      headTop.appendChild(dragHint);
       const iocEl = document.createElement("div");
       iocEl.className = "rain-ioc";
       iocEl.textContent = truncateMiddle(res.ioc, 60);
@@ -254,7 +385,7 @@
         navigator.clipboard.writeText(res.ioc).catch(() => {});
         hideAll();
       });
-      head.appendChild(cat);
+      head.appendChild(headTop);
       head.appendChild(iocEl);
 
       // IOC-type switcher: correct a wrong classification, or pick a type
@@ -268,20 +399,27 @@
         chip.title = c.label;
         chip.addEventListener("click", (ev) => {
           ev.stopPropagation();
-          openMenuAt(x, y, text, c.id);
+          const currentX = parseFloat(menu.style.left);
+          const currentY = parseFloat(menu.style.top);
+          openMenuAt(currentX, currentY, text, c.id);
         });
         chips.appendChild(chip);
       });
       head.appendChild(chips);
       menu.appendChild(head);
+      makeMenuDraggable(head, menu);
 
       const items = document.createElement("div");
       items.className = "rain-items";
 
-      const addItem = (label, onClick, extraClass) => {
+      const addItem = (label, onClick, extraClass, tool) => {
         const btn = document.createElement("button");
         btn.className = "rain-item" + (extraClass ? " " + extraClass : "");
-        btn.textContent = label;
+        btn.appendChild(createToolMark(tool || { initials: "YS" }));
+        const labelEl = document.createElement("span");
+        labelEl.className = "rain-item-label";
+        labelEl.textContent = label;
+        btn.appendChild(labelEl);
         btn.addEventListener("click", () => {
           onClick();
           hideAll();
@@ -298,7 +436,7 @@
       res.tools.forEach(tool => {
         addItem(tool.title, () => {
           chrome.runtime.sendMessage({ action: "hunt", toolId: tool.id, ioc: res.ioc });
-        });
+        }, "", tool);
       });
 
       if (res.generalTools.length && (res.tools.length || res.canYeet)) {
@@ -311,16 +449,17 @@
       res.generalTools.forEach(tool => {
         addItem(tool.title, () => {
           chrome.runtime.sendMessage({ action: "hunt", toolId: tool.id, ioc: res.ioc });
-        });
+        }, "", tool);
       });
 
       menu.appendChild(items);
 
-      menu.style.left = clamp(x, 8, window.innerWidth - 330) + "px";
-      menu.style.top = clamp(y, 8, window.innerHeight - 120) + "px";
+      menu.style.left = VIEWPORT_MARGIN + "px";
+      menu.style.top = VIEWPORT_MARGIN + "px";
       u.fab.classList.remove("visible");
       menu.classList.add("visible");
       menuOpen = true;
+      keepMenuInViewport(x, y);
     });
   }
 
@@ -362,6 +501,10 @@
   window.addEventListener("scroll", () => {
     if (ui && !menuOpen) hideAll();
   }, true);
+
+  window.addEventListener("resize", () => {
+    if (menuOpen) keepMenuInViewport();
+  });
 
   document.addEventListener("selectionchange", () => {
     if (menuOpen || !ui) return;

@@ -7,6 +7,8 @@ const emptyState = document.getElementById("empty-state");
 // User's manual type choice; cleared whenever the indicator text changes.
 let overrideCategory = null;
 let debounceTimer = null;
+let pendingPanelKey = null;
+const PANEL_IOC_TTL_MS = 30 * 1000;
 
 function refresh() {
   const text = iocInput.value.trim();
@@ -43,10 +45,40 @@ function render(res) {
     catsEl.appendChild(chip);
   });
 
-  const addTool = (label, onClick, extraClass) => {
+  const faviconUrl = (pageUrl) => {
+    if (!pageUrl) return "";
+    const url = new URL(chrome.runtime.getURL("_favicon/"));
+    url.searchParams.set("pageUrl", pageUrl);
+    url.searchParams.set("size", "32");
+    return url.toString();
+  };
+
+  const createToolMark = (tool) => {
+    const mark = document.createElement("span");
+    mark.className = "tool-mark";
+    const letters = document.createElement("span");
+    letters.className = "tool-letters";
+    letters.textContent = tool?.initials || "?";
+    mark.appendChild(letters);
+    if (tool?.faviconUrl) {
+      const img = document.createElement("img");
+      img.alt = "";
+      img.addEventListener("load", () => mark.classList.add("has-icon"));
+      img.addEventListener("error", () => img.remove());
+      img.src = faviconUrl(tool.faviconUrl);
+      mark.appendChild(img);
+    }
+    return mark;
+  };
+
+  const addTool = (label, onClick, extraClass, tool) => {
     const btn = document.createElement("button");
     btn.className = "tool-btn" + (extraClass ? " " + extraClass : "");
-    btn.textContent = label;
+    btn.appendChild(createToolMark(tool || { initials: "YS" }));
+    const labelEl = document.createElement("span");
+    labelEl.className = "tool-label";
+    labelEl.textContent = label;
+    btn.appendChild(labelEl);
     btn.addEventListener("click", onClick);
     toolsEl.appendChild(btn);
   };
@@ -60,7 +92,7 @@ function render(res) {
   res.tools.forEach(tool => {
     addTool(tool.title, () => {
       chrome.runtime.sendMessage({ action: "hunt", toolId: tool.id, ioc: res.ioc });
-    });
+    }, "", tool);
   });
 
   if (res.generalTools.length && (res.tools.length || res.canYeet)) {
@@ -73,7 +105,7 @@ function render(res) {
   res.generalTools.forEach(tool => {
     addTool(tool.title, () => {
       chrome.runtime.sendMessage({ action: "hunt", toolId: tool.id, ioc: res.ioc });
-    });
+    }, "", tool);
   });
 }
 
@@ -91,19 +123,44 @@ function applyPendingIoc(pending) {
   if (!pending.ioc) iocInput.focus();
 }
 
+function consumePendingIoc(key, pending) {
+  if (!pending || typeof pending.ioc !== "string" || typeof pending.at !== "number") return;
+  const isFresh = Date.now() - pending.at <= PANEL_IOC_TTL_MS;
+  chrome.storage.session.remove(key, () => {
+    if (chrome.runtime.lastError) {
+      console.error("RAIN: Failed to consume pending side-panel state:", chrome.runtime.lastError);
+      return;
+    }
+    if (isFresh) applyPendingIoc(pending);
+  });
+}
+
 // Prefill from the hotkey (set by the background worker), and keep updating
 // if the hotkey fires again while the panel is already open.
-chrome.storage.session.get("pendingPanelIoc", (data) => {
-  if (data.pendingPanelIoc) {
-    applyPendingIoc(data.pendingPanelIoc);
-  } else {
+chrome.windows.getCurrent((currentWindow) => {
+  if (chrome.runtime.lastError || typeof currentWindow?.id !== "number") {
+    console.error("RAIN: Failed to identify the side panel's browser window:", chrome.runtime.lastError);
     iocInput.focus();
+    return;
   }
+  pendingPanelKey = `pendingPanelIoc-${currentWindow.id}`;
+  chrome.storage.session.get(pendingPanelKey, (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("RAIN: Failed to read pending side-panel state:", chrome.runtime.lastError);
+      iocInput.focus();
+      return;
+    }
+    if (data[pendingPanelKey]) {
+      consumePendingIoc(pendingPanelKey, data[pendingPanelKey]);
+    } else {
+      iocInput.focus();
+    }
+  });
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "session" && changes.pendingPanelIoc && changes.pendingPanelIoc.newValue) {
-    applyPendingIoc(changes.pendingPanelIoc.newValue);
+  if (area === "session" && pendingPanelKey && changes[pendingPanelKey]?.newValue) {
+    consumePendingIoc(pendingPanelKey, changes[pendingPanelKey].newValue);
   }
 });
 
