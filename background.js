@@ -548,65 +548,39 @@ function injectKQLQuery(tabId, ioc, category, onScheduled) {
         console.warn("RAIN: Custom KQL template has an unsafe placeholder context; using the default template.", error);
         finalQuery = renderKqlTemplate(kqlTemplates[category] || kqlTemplates.ip, ioc);
       }
+      const iocProbe = kqlStringLiteral(ioc);
 
       chrome.scripting.executeScript({
         target: { tabId: tabId },
         world: "MAIN",
-        func: (queryValue) => {
-          const selectModel = () => {
-            const editorApi = window.monaco?.editor;
-            const editors = editorApi?.getEditors?.() || [];
-            const focused = editors.find(editor => editor.hasTextFocus?.());
-            const visible = editors.filter(editor => {
-              const node = editor.getDomNode?.();
-              return node?.isConnected && node.getClientRects?.().length > 0;
-            });
-            const editor = focused ||
-              (visible.length === 1 ? visible[0] : null) ||
-              (editors.length === 1 ? editors[0] : null);
-            const liveModels = (editorApi?.getModels?.() || []).filter(model => !model.isDisposed?.());
-            // Older Monaco builds used by some Defender tenants expose models
-            // but not getEditors(). Fall back only when the target is
-            // unambiguous; never pick an arbitrary model from a larger set.
-            return editor?.getModel?.() || (liveModels.length === 1 ? liveModels[0] : null);
-          };
-
+        func: (queryValue, valueProbe) => {
           let attempts = 0;
           const interval = setInterval(() => {
-            const model = selectModel();
-            if (model) {
-              const baselineValue = model.getValue?.() || "";
-              model.setValue(queryValue);
+            const models = window.monaco?.editor?.getModels?.();
+            if (models?.length > 0) {
+              models[0].setValue(queryValue);
               console.log("RAIN: KQL query injected successfully.");
               clearInterval(interval);
 
-              // Defender may restore its previous query while the portal is
-              // still hydrating. Reapply only if it restores that exact
-              // pre-injection value (or a blank editor). If anything else
-              // appears, assume the analyst edited it and never overwrite it.
+              // Preserve the original, known-working Defender injector. The
+              // portal can reset Monaco several times while it finishes loading.
               [1000, 2500, 4000].forEach(delay => {
                 setTimeout(() => {
-                  const currentModel = selectModel();
-                  if (!currentModel?.getValue) return;
-                  const currentValue = currentModel.getValue();
-                  if (currentValue === queryValue) return;
-                  if (currentValue === baselineValue || currentValue.trim() === "") {
-                    currentModel.setValue(queryValue);
-                    console.log(`RAIN: Defender restored its prior query; reapplied after ${delay}ms.`);
-                  } else {
-                    console.warn("RAIN: Defender editor changed after injection; leaving it untouched.");
+                  if (models[0] && !models[0].getValue().includes(valueProbe)) {
+                    models[0].setValue(queryValue);
+                    console.log(`RAIN: Query reinforced after ${delay}ms`);
                   }
                 }, delay);
               });
             } else {
               if (++attempts > 60) {
-                console.warn("RAIN: No unambiguous Monaco editor was available in time.");
+                console.warn("RAIN: Monaco editor not loaded in time.");
                 clearInterval(interval);
               }
             }
           }, 500);
         },
-        args: [finalQuery]
+        args: [finalQuery, iocProbe]
       }, () => {
         const injectErr = chrome.runtime.lastError;
         if (injectErr) {

@@ -95,29 +95,23 @@ assert.throws(() => vm.runInContext(
 ), /must include its documented IOC placeholder/);
 
 vm.runInContext(`injectKQLQuery(7, ${JSON.stringify('Mozilla/5.0 "quoted"\nline\\path')}, "useragent")`, context);
-assert.equal(capturedScript.args.length, 1);
+assert.equal(capturedScript.args.length, 2);
 assert.match(capturedScript.args[0], /parse_user_agent/);
 assert.match(capturedScript.args[0], /Mozilla\/5\.0 \\"quoted\\" line\\\\path/);
-assert.doesNotMatch(capturedScript.func.toString(), /models\[0\]/);
+assert.equal(capturedScript.args[1], '"Mozilla/5.0 \\"quoted\\" line\\\\path"');
+assert.match(capturedScript.func.toString(), /models\[0\]/);
 let injectedQuery = null;
 const intervalCallbacks = [];
 const timeoutCallbacks = [];
-let activeModelValue = "previous Defender query";
-const activeModel = {
-  getValue: () => activeModelValue,
-  setValue: value => { activeModelValue = value; injectedQuery = value; }
+let defenderModelValue = "previous Defender query";
+const defenderModel = {
+  getValue: () => defenderModelValue,
+  setValue: value => { defenderModelValue = value; injectedQuery = value; }
 };
-const inactiveEditor = {
-  hasTextFocus: () => false,
-  getDomNode: () => ({ isConnected: true, getClientRects: () => [] }),
-  getModel: () => ({ setValue: () => assert.fail("inactive editor must not be changed") })
+const secondaryModel = {
+  setValue: () => assert.fail("the restored injector must keep using Defender's first Monaco model")
 };
-const activeEditor = {
-  hasTextFocus: () => true,
-  getDomNode: () => ({ isConnected: true, getClientRects: () => [{}] }),
-  getModel: () => activeModel
-};
-context.window = { monaco: { editor: { getEditors: () => [inactiveEditor, activeEditor] } } };
+context.window = { monaco: { editor: { getModels: () => [defenderModel, secondaryModel] } } };
 context.setInterval = fn => { intervalCallbacks.push(fn); return intervalCallbacks.length; };
 context.setTimeout = fn => { timeoutCallbacks.push(fn); return timeoutCallbacks.length; };
 context.clearInterval = () => {};
@@ -127,31 +121,16 @@ intervalCallbacks[0]();
 assert.equal(injectedQuery, capturedScript.args[0]);
 assert.equal(timeoutCallbacks.length, 3);
 
-// Defender can restore the editor's pre-injection value after Monaco mounts.
-// Reapply over that exact baseline, but never overwrite a later analyst edit.
-activeModelValue = "previous Defender query";
+// Match the original working MDE behavior: if the hardened IOC literal
+// disappears while Defender hydrates, put the complete query back.
+defenderModelValue = "previous Defender query";
 injectedQuery = null;
 timeoutCallbacks[0]();
-assert.equal(injectedQuery, capturedScript.args[0], "Defender restoring its baseline query must trigger one safe reapply");
-activeModelValue = "analyst edit after injection";
+assert.equal(injectedQuery, capturedScript.args[0], "Defender removing the IOC must trigger the original reapply behavior");
+defenderModelValue = `// analyst note\n${capturedScript.args[1]}`;
 injectedQuery = null;
 timeoutCallbacks[1]();
-assert.equal(activeModelValue, "analyst edit after injection");
-assert.equal(injectedQuery, null, "a post-injection analyst edit must never be overwritten");
-
-// Some Defender tenants bundle a Monaco build that exposes query models but
-// not editor instances. The production path must retain the working model API
-// fallback instead of waiting forever for getEditors().
-injectedQuery = null;
-const fallbackModel = {
-  isDisposed: () => false,
-  getValue: () => injectedQuery || "",
-  setValue: value => { injectedQuery = value; }
-};
-context.window = { monaco: { editor: { getModels: () => [fallbackModel] } } };
-capturedScript.func(...capturedScript.args);
-intervalCallbacks.at(-1)();
-assert.equal(injectedQuery, capturedScript.args[0], "Defender's getModels-only Monaco API must still inject KQL");
+assert.equal(injectedQuery, null, "the original injector must not reapply while the IOC is still present");
 
 localData.kqlTemplates = { ip: "DeviceNetworkEvents | where RemoteIP == 'IP_VALUE'" };
 injectedQuery = null;
