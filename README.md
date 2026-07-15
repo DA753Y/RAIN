@@ -110,4 +110,3 @@ RAIN is a hobby project. If it saves you a few minutes during triage and you fee
 
 ---
 
-<p align="center"><em>Stay dry out there. 🌧️</em></p>
