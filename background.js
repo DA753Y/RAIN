@@ -383,7 +383,9 @@ function kqlQuoteAt(text, offset) {
 function renderKqlTemplate(template, ioc) {
   if (typeof template !== "string") throw new TypeError("KQL template must be text.");
   const anyPlaceholder = new RegExp(KQL_PLACEHOLDER_SOURCE);
-  if (!anyPlaceholder.test(template)) return template;
+  if (!anyPlaceholder.test(template)) {
+    throw new Error("KQL template must include its documented IOC placeholder.");
+  }
   if (template.includes(KQL_IOC_VARIABLE)) {
     throw new Error(`${KQL_IOC_VARIABLE} is reserved for RAIN.`);
   }
@@ -551,8 +553,7 @@ function injectKQLQuery(tabId, ioc, category, onScheduled) {
         target: { tabId: tabId },
         world: "MAIN",
         func: (queryValue) => {
-          let attempts = 0;
-          const interval = setInterval(() => {
+          const selectModel = () => {
             const editorApi = window.monaco?.editor;
             const editors = editorApi?.getEditors?.() || [];
             const focused = editors.find(editor => editor.hasTextFocus?.());
@@ -567,11 +568,36 @@ function injectKQLQuery(tabId, ioc, category, onScheduled) {
             // Older Monaco builds used by some Defender tenants expose models
             // but not getEditors(). Fall back only when the target is
             // unambiguous; never pick an arbitrary model from a larger set.
-            const model = editor?.getModel?.() || (liveModels.length === 1 ? liveModels[0] : null);
+            return editor?.getModel?.() || (liveModels.length === 1 ? liveModels[0] : null);
+          };
+
+          let attempts = 0;
+          const interval = setInterval(() => {
+            const model = selectModel();
             if (model) {
+              const baselineValue = model.getValue?.() || "";
               model.setValue(queryValue);
               console.log("RAIN: KQL query injected successfully.");
               clearInterval(interval);
+
+              // Defender may restore its previous query while the portal is
+              // still hydrating. Reapply only if it restores that exact
+              // pre-injection value (or a blank editor). If anything else
+              // appears, assume the analyst edited it and never overwrite it.
+              [1000, 2500, 4000].forEach(delay => {
+                setTimeout(() => {
+                  const currentModel = selectModel();
+                  if (!currentModel?.getValue) return;
+                  const currentValue = currentModel.getValue();
+                  if (currentValue === queryValue) return;
+                  if (currentValue === baselineValue || currentValue.trim() === "") {
+                    currentModel.setValue(queryValue);
+                    console.log(`RAIN: Defender restored its prior query; reapplied after ${delay}ms.`);
+                  } else {
+                    console.warn("RAIN: Defender editor changed after injection; leaving it untouched.");
+                  }
+                }, delay);
+              });
             } else {
               if (++attempts > 60) {
                 console.warn("RAIN: No unambiguous Monaco editor was available in time.");

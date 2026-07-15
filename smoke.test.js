@@ -44,7 +44,9 @@ function classify(text, overrideCategory) {
 }
 
 const chromeUa = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
+const reportedUa = "Mozilla/12.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/444.0.0.0 Safari/537.36 Edg/109.0.1518.78";
 assert.equal(classify(chromeUa).category, "useragent");
+assert.equal(classify(reportedUa).category, "useragent");
 assert.equal(classify("curl/8.10.1").category, "useragent");
 assert.equal(classify("Googlebot/2.1 (+http://www.google.com/bot.html)").ioc.endsWith(")"), true);
 assert.equal(classify('"Googlebot/2.1 (+http://www.google.com/bot.html)"').ioc.endsWith(")"), true);
@@ -87,15 +89,24 @@ assert.throws(() => vm.runInContext(
   `renderKqlTemplate(${JSON.stringify('print value = "prefix IP_VALUE suffix"')}, "test")`,
   context
 ), /standalone quoted string/);
+assert.throws(() => vm.runInContext(
+  `renderKqlTemplate(${JSON.stringify('print value = "stale saved query"')}, "test")`,
+  context
+), /must include its documented IOC placeholder/);
 
 vm.runInContext(`injectKQLQuery(7, ${JSON.stringify('Mozilla/5.0 "quoted"\nline\\path')}, "useragent")`, context);
 assert.equal(capturedScript.args.length, 1);
 assert.match(capturedScript.args[0], /parse_user_agent/);
 assert.match(capturedScript.args[0], /Mozilla\/5\.0 \\"quoted\\" line\\\\path/);
 assert.doesNotMatch(capturedScript.func.toString(), /models\[0\]/);
-assert.doesNotMatch(capturedScript.func.toString(), /setTimeout/);
 let injectedQuery = null;
 const intervalCallbacks = [];
+const timeoutCallbacks = [];
+let activeModelValue = "previous Defender query";
+const activeModel = {
+  getValue: () => activeModelValue,
+  setValue: value => { activeModelValue = value; injectedQuery = value; }
+};
 const inactiveEditor = {
   hasTextFocus: () => false,
   getDomNode: () => ({ isConnected: true, getClientRects: () => [] }),
@@ -104,15 +115,29 @@ const inactiveEditor = {
 const activeEditor = {
   hasTextFocus: () => true,
   getDomNode: () => ({ isConnected: true, getClientRects: () => [{}] }),
-  getModel: () => ({ setValue: value => { injectedQuery = value; } })
+  getModel: () => activeModel
 };
 context.window = { monaco: { editor: { getEditors: () => [inactiveEditor, activeEditor] } } };
 context.setInterval = fn => { intervalCallbacks.push(fn); return intervalCallbacks.length; };
+context.setTimeout = fn => { timeoutCallbacks.push(fn); return timeoutCallbacks.length; };
 context.clearInterval = () => {};
 capturedScript.func(...capturedScript.args);
 assert.equal(intervalCallbacks.length, 1);
 intervalCallbacks[0]();
 assert.equal(injectedQuery, capturedScript.args[0]);
+assert.equal(timeoutCallbacks.length, 3);
+
+// Defender can restore the editor's pre-injection value after Monaco mounts.
+// Reapply over that exact baseline, but never overwrite a later analyst edit.
+activeModelValue = "previous Defender query";
+injectedQuery = null;
+timeoutCallbacks[0]();
+assert.equal(injectedQuery, capturedScript.args[0], "Defender restoring its baseline query must trigger one safe reapply");
+activeModelValue = "analyst edit after injection";
+injectedQuery = null;
+timeoutCallbacks[1]();
+assert.equal(activeModelValue, "analyst edit after injection");
+assert.equal(injectedQuery, null, "a post-injection analyst edit must never be overwritten");
 
 // Some Defender tenants bundle a Monaco build that exposes query models but
 // not editor instances. The production path must retain the working model API
@@ -135,6 +160,15 @@ assert.equal(capturedScript.args[0], safeCustomQuery);
 capturedScript.func(...capturedScript.args);
 intervalCallbacks.at(-1)();
 assert.equal(injectedQuery, safeCustomQuery, "the real injection path must keep the IOC inside one KQL literal");
+delete localData.kqlTemplates;
+
+// A legacy saved template without a placeholder cannot inject a stale,
+// hard-coded query; the extension must fall back to the current default.
+localData.kqlTemplates = { useragent: 'print useragent = "Mozilla/5.0 stale"' };
+vm.runInContext(`injectKQLQuery(7, ${JSON.stringify(reportedUa)}, "useragent")`, context);
+assert.match(capturedScript.args[0], /parse_user_agent/);
+assert.match(capturedScript.args[0], /Mozilla\/12\.0/);
+assert.doesNotMatch(capturedScript.args[0], /Mozilla\/5\.0 stale/);
 delete localData.kqlTemplates;
 
 vm.runInContext(`setPendingInjection(11, "203.0.113.9", "ip")`, context);
