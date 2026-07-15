@@ -84,6 +84,8 @@ RAIN does not collect telemetry or send data to its own service. Settings stay i
 
 The only site where RAIN injects anything is `https://security.microsoft.com`, and the injected action only fills the Advanced Hunting editor.
 
+The full details are in the [privacy policy](PRIVACY.md).
+
 ### A short OPSEC warning
 
 Public reputation services receive the indicator you submit. Avoid sending internal hostnames, employee accounts, or sensitive incident indicators to public tools unless that fits your team's policy. The dachshund cannot un-bark.

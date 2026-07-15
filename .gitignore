@@ -9,6 +9,7 @@ dist/
 # Signing keys and local environment files
 *.pem
 *.key
+gha-creds-*.json
 .env
 .env.*
 !.env.example
