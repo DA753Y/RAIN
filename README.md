@@ -6,7 +6,7 @@
 <p align="center"><strong>Right-click Analyst's IOC Navigator</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.1.0-C28A5C" alt="Version 2.1.0">
+  <img src="https://img.shields.io/badge/version-2.1.1-C28A5C" alt="Version 2.1.1">
   <img src="https://img.shields.io/badge/manifest-V3-2E8CA8" alt="Manifest V3">
   <img src="https://img.shields.io/badge/Chromium-116%2B-2E8CA8" alt="Chromium 116+">
 </p>
