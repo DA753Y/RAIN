@@ -383,7 +383,9 @@ function kqlQuoteAt(text, offset) {
 function renderKqlTemplate(template, ioc) {
   if (typeof template !== "string") throw new TypeError("KQL template must be text.");
   const anyPlaceholder = new RegExp(KQL_PLACEHOLDER_SOURCE);
-  if (!anyPlaceholder.test(template)) return template;
+  if (!anyPlaceholder.test(template)) {
+    throw new Error("KQL template must include its documented IOC placeholder.");
+  }
   if (template.includes(KQL_IOC_VARIABLE)) {
     throw new Error(`${KQL_IOC_VARIABLE} is reserved for RAIN.`);
   }
@@ -546,36 +548,39 @@ function injectKQLQuery(tabId, ioc, category, onScheduled) {
         console.warn("RAIN: Custom KQL template has an unsafe placeholder context; using the default template.", error);
         finalQuery = renderKqlTemplate(kqlTemplates[category] || kqlTemplates.ip, ioc);
       }
+      const iocProbe = kqlStringLiteral(ioc);
 
       chrome.scripting.executeScript({
         target: { tabId: tabId },
         world: "MAIN",
-        func: (queryValue) => {
+        func: (queryValue, valueProbe) => {
           let attempts = 0;
           const interval = setInterval(() => {
-            const editors = window.monaco?.editor?.getEditors?.() || [];
-            const focused = editors.find(editor => editor.hasTextFocus?.());
-            const visible = editors.filter(editor => {
-              const node = editor.getDomNode?.();
-              return node?.isConnected && node.getClientRects?.().length > 0;
-            });
-            const editor = focused ||
-              (visible.length === 1 ? visible[0] : null) ||
-              (editors.length === 1 ? editors[0] : null);
-            const model = editor?.getModel?.();
-            if (model) {
-              model.setValue(queryValue);
+            const models = window.monaco?.editor?.getModels?.();
+            if (models?.length > 0) {
+              models[0].setValue(queryValue);
               console.log("RAIN: KQL query injected successfully.");
               clearInterval(interval);
+
+              // Preserve the original, known-working Defender injector. The
+              // portal can reset Monaco several times while it finishes loading.
+              [1000, 2500, 4000].forEach(delay => {
+                setTimeout(() => {
+                  if (models[0] && !models[0].getValue().includes(valueProbe)) {
+                    models[0].setValue(queryValue);
+                    console.log(`RAIN: Query reinforced after ${delay}ms`);
+                  }
+                }, delay);
+              });
             } else {
               if (++attempts > 60) {
-                console.warn("RAIN: No unambiguous Monaco editor was available in time.");
+                console.warn("RAIN: Monaco editor not loaded in time.");
                 clearInterval(interval);
               }
             }
           }, 500);
         },
-        args: [finalQuery]
+        args: [finalQuery, iocProbe]
       }, () => {
         const injectErr = chrome.runtime.lastError;
         if (injectErr) {

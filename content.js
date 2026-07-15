@@ -38,10 +38,68 @@
   let ui = null; // { fab, menu }
   let currentText = "";
   let menuOpen = false;
+  let extensionContextInvalid = false;
+
+  function invalidateExtensionContext() {
+    extensionContextInvalid = true;
+    if (host?.isConnected) host.remove();
+    host = null;
+    ui = null;
+    currentText = "";
+    menuOpen = false;
+  }
+
+  function hasRuntimeContext() {
+    if (extensionContextInvalid) return false;
+    try {
+      if (!chrome.runtime?.id) {
+        invalidateExtensionContext();
+        return false;
+      }
+      return true;
+    } catch (_) {
+      invalidateExtensionContext();
+      return false;
+    }
+  }
+
+  function runtimeUrl(path) {
+    if (!hasRuntimeContext()) return "";
+    try {
+      return chrome.runtime.getURL(path);
+    } catch (_) {
+      invalidateExtensionContext();
+      return "";
+    }
+  }
+
+  function sendRuntimeMessage(message, callback) {
+    if (!hasRuntimeContext()) return false;
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        let error = null;
+        try {
+          error = chrome.runtime.lastError;
+        } catch (_) {
+          invalidateExtensionContext();
+          return;
+        }
+        if (callback) callback(response, error);
+      });
+      return true;
+    } catch (_) {
+      invalidateExtensionContext();
+      return false;
+    }
+  }
 
   function ensureUi() {
+    if (!hasRuntimeContext()) return null;
     if (ui) return ui;
     if (!(document.documentElement instanceof HTMLElement)) return null;
+
+    const iconUrl = runtimeUrl("icons/icon32.png");
+    if (!iconUrl) return null;
 
     host = document.createElement("rain-ioc-hunter");
     host.style.cssText = `all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:${Z_MAX};`;
@@ -228,7 +286,7 @@
 
       </style>
       <button class="rain-fab" title="Hunt this IOC with RAIN">
-        <img src="${chrome.runtime.getURL("icons/icon32.png")}" alt="RAIN">
+        <img src="${iconUrl}" alt="RAIN">
       </button>
       <div class="rain-menu" role="menu"></div>
     `;
@@ -262,7 +320,9 @@
 
   function faviconUrl(pageUrl, size = 32) {
     if (!pageUrl) return "";
-    const url = new URL(chrome.runtime.getURL("_favicon/"));
+    const baseUrl = runtimeUrl("_favicon/");
+    if (!baseUrl) return "";
+    const url = new URL(baseUrl);
     url.searchParams.set("pageUrl", pageUrl);
     url.searchParams.set("size", String(size));
     return url.toString();
@@ -277,11 +337,13 @@
     mark.appendChild(letters);
 
     if (tool?.faviconUrl) {
+      const src = faviconUrl(tool.faviconUrl);
+      if (!src) return mark;
       const img = document.createElement("img");
       img.alt = "";
       img.addEventListener("load", () => mark.classList.add("has-icon"));
       img.addEventListener("error", () => img.remove());
-      img.src = faviconUrl(tool.faviconUrl);
+      img.src = src;
       mark.appendChild(img);
     }
     return mark;
@@ -358,8 +420,8 @@
     if (!u || !text) return;
     currentText = text;
 
-    chrome.runtime.sendMessage({ action: "classify", text, overrideCategory }, (res) => {
-      if (chrome.runtime.lastError || !res || !res.ioc) return;
+    sendRuntimeMessage({ action: "classify", text, overrideCategory }, (res, error) => {
+      if (error || !res || !res.ioc) return;
 
       const menu = u.menu;
       menu.textContent = "";
@@ -429,13 +491,13 @@
 
       if (res.canYeet) {
         addItem("Yeet Search (all tools)", () => {
-          chrome.runtime.sendMessage({ action: "yeet", category: res.category, ioc: res.ioc });
+          sendRuntimeMessage({ action: "yeet", category: res.category, ioc: res.ioc });
         }, "rain-yeet");
       }
 
       res.tools.forEach(tool => {
         addItem(tool.title, () => {
-          chrome.runtime.sendMessage({ action: "hunt", toolId: tool.id, ioc: res.ioc });
+          sendRuntimeMessage({ action: "hunt", toolId: tool.id, ioc: res.ioc });
         }, "", tool);
       });
 
@@ -448,7 +510,7 @@
 
       res.generalTools.forEach(tool => {
         addItem(tool.title, () => {
-          chrome.runtime.sendMessage({ action: "hunt", toolId: tool.id, ioc: res.ioc });
+          sendRuntimeMessage({ action: "hunt", toolId: tool.id, ioc: res.ioc });
         }, "", tool);
       });
 

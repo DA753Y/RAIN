@@ -44,7 +44,9 @@ function classify(text, overrideCategory) {
 }
 
 const chromeUa = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
+const reportedUa = "Mozilla/12.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/444.0.0.0 Safari/537.36 Edg/109.0.1518.78";
 assert.equal(classify(chromeUa).category, "useragent");
+assert.equal(classify(reportedUa).category, "useragent");
 assert.equal(classify("curl/8.10.1").category, "useragent");
 assert.equal(classify("Googlebot/2.1 (+http://www.google.com/bot.html)").ioc.endsWith(")"), true);
 assert.equal(classify('"Googlebot/2.1 (+http://www.google.com/bot.html)"').ioc.endsWith(")"), true);
@@ -87,32 +89,48 @@ assert.throws(() => vm.runInContext(
   `renderKqlTemplate(${JSON.stringify('print value = "prefix IP_VALUE suffix"')}, "test")`,
   context
 ), /standalone quoted string/);
+assert.throws(() => vm.runInContext(
+  `renderKqlTemplate(${JSON.stringify('print value = "stale saved query"')}, "test")`,
+  context
+), /must include its documented IOC placeholder/);
 
 vm.runInContext(`injectKQLQuery(7, ${JSON.stringify('Mozilla/5.0 "quoted"\nline\\path')}, "useragent")`, context);
-assert.equal(capturedScript.args.length, 1);
+assert.equal(capturedScript.args.length, 2);
 assert.match(capturedScript.args[0], /parse_user_agent/);
 assert.match(capturedScript.args[0], /Mozilla\/5\.0 \\"quoted\\" line\\\\path/);
-assert.doesNotMatch(capturedScript.func.toString(), /models\[0\]/);
-assert.doesNotMatch(capturedScript.func.toString(), /setTimeout/);
+assert.equal(capturedScript.args[1], '"Mozilla/5.0 \\"quoted\\" line\\\\path"');
+assert.match(capturedScript.func.toString(), /models\[0\]/);
 let injectedQuery = null;
 const intervalCallbacks = [];
-const inactiveEditor = {
-  hasTextFocus: () => false,
-  getDomNode: () => ({ isConnected: true, getClientRects: () => [] }),
-  getModel: () => ({ setValue: () => assert.fail("inactive editor must not be changed") })
+const timeoutCallbacks = [];
+let defenderModelValue = "previous Defender query";
+const defenderModel = {
+  getValue: () => defenderModelValue,
+  setValue: value => { defenderModelValue = value; injectedQuery = value; }
 };
-const activeEditor = {
-  hasTextFocus: () => true,
-  getDomNode: () => ({ isConnected: true, getClientRects: () => [{}] }),
-  getModel: () => ({ setValue: value => { injectedQuery = value; } })
+const secondaryModel = {
+  setValue: () => assert.fail("the restored injector must keep using Defender's first Monaco model")
 };
-context.window = { monaco: { editor: { getEditors: () => [inactiveEditor, activeEditor] } } };
+context.window = { monaco: { editor: { getModels: () => [defenderModel, secondaryModel] } } };
 context.setInterval = fn => { intervalCallbacks.push(fn); return intervalCallbacks.length; };
+context.setTimeout = fn => { timeoutCallbacks.push(fn); return timeoutCallbacks.length; };
 context.clearInterval = () => {};
 capturedScript.func(...capturedScript.args);
 assert.equal(intervalCallbacks.length, 1);
 intervalCallbacks[0]();
 assert.equal(injectedQuery, capturedScript.args[0]);
+assert.equal(timeoutCallbacks.length, 3);
+
+// Match the original working MDE behavior: if the hardened IOC literal
+// disappears while Defender hydrates, put the complete query back.
+defenderModelValue = "previous Defender query";
+injectedQuery = null;
+timeoutCallbacks[0]();
+assert.equal(injectedQuery, capturedScript.args[0], "Defender removing the IOC must trigger the original reapply behavior");
+defenderModelValue = `// analyst note\n${capturedScript.args[1]}`;
+injectedQuery = null;
+timeoutCallbacks[1]();
+assert.equal(injectedQuery, null, "the original injector must not reapply while the IOC is still present");
 
 localData.kqlTemplates = { ip: "DeviceNetworkEvents | where RemoteIP == 'IP_VALUE'" };
 injectedQuery = null;
@@ -121,6 +139,15 @@ assert.equal(capturedScript.args[0], safeCustomQuery);
 capturedScript.func(...capturedScript.args);
 intervalCallbacks.at(-1)();
 assert.equal(injectedQuery, safeCustomQuery, "the real injection path must keep the IOC inside one KQL literal");
+delete localData.kqlTemplates;
+
+// A legacy saved template without a placeholder cannot inject a stale,
+// hard-coded query; the extension must fall back to the current default.
+localData.kqlTemplates = { useragent: 'print useragent = "Mozilla/5.0 stale"' };
+vm.runInContext(`injectKQLQuery(7, ${JSON.stringify(reportedUa)}, "useragent")`, context);
+assert.match(capturedScript.args[0], /parse_user_agent/);
+assert.match(capturedScript.args[0], /Mozilla\/12\.0/);
+assert.doesNotMatch(capturedScript.args[0], /Mozilla\/5\.0 stale/);
 delete localData.kqlTemplates;
 
 vm.runInContext(`setPendingInjection(11, "203.0.113.9", "ip")`, context);
@@ -133,5 +160,52 @@ assert.match(cyberChefUrl, /#recipe=Parse_User_Agent\(\)&input=/);
 assert.equal(decodeURIComponent(cyberChefUrl.split("&input=")[1]), Buffer.from(chromeUa).toString("base64"));
 assert.equal(fs.existsSync("vendor/ua-parser.min.js"), false);
 assert.equal(fs.existsSync("useragent.html"), false);
+
+// Reloading or updating an unpacked extension invalidates content scripts
+// that are still attached to existing tabs. A later selection must make the
+// stale script stop quietly rather than throwing from chrome.runtime.getURL().
+const staleDocumentListeners = {};
+const staleWindowListeners = {};
+let staleCreateAttempts = 0;
+class MockHTMLElement {}
+const staleRuntime = {
+  get id() { throw new Error("Extension context invalidated."); },
+  getURL: () => { throw new Error("Extension context invalidated."); },
+  sendMessage: () => { throw new Error("Extension context invalidated."); },
+  onMessage: { addListener() {} }
+};
+const staleContentContext = vm.createContext({
+  chrome: {
+    runtime: staleRuntime,
+    storage: {
+      local: { get: (_key, callback) => callback({}) },
+      onChanged: { addListener() {} }
+    }
+  },
+  console,
+  URL,
+  HTMLElement: MockHTMLElement,
+  MutationObserver: class { observe() {} },
+  document: {
+    documentElement: new MockHTMLElement(),
+    createElement: () => { staleCreateAttempts++; throw new Error("stale context must not create UI"); },
+    addEventListener: (name, callback) => { staleDocumentListeners[name] = callback; }
+  },
+  window: {
+    innerWidth: 1200,
+    innerHeight: 800,
+    addEventListener: (name, callback) => { staleWindowListeners[name] = callback; },
+    getSelection: () => ({
+      toString: () => "203.0.113.5",
+      rangeCount: 1,
+      getRangeAt: () => ({ getBoundingClientRect: () => ({ left: 10, right: 80, top: 10, bottom: 25, width: 70, height: 15 }) })
+    })
+  },
+  setTimeout: callback => { callback(); return 1; },
+  clearTimeout() {}
+});
+vm.runInContext(fs.readFileSync("content.js", "utf8"), staleContentContext, { filename: "content.js" });
+assert.doesNotThrow(() => staleDocumentListeners.mouseup({ button: 0, target: null }));
+assert.equal(staleCreateAttempts, 0, "an invalidated content script must not recreate the RAIN overlay");
 
 console.log("RAIN smoke tests passed");
