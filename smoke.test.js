@@ -114,6 +114,20 @@ assert.equal(intervalCallbacks.length, 1);
 intervalCallbacks[0]();
 assert.equal(injectedQuery, capturedScript.args[0]);
 
+// Some Defender tenants bundle a Monaco build that exposes query models but
+// not editor instances. The production path must retain the working model API
+// fallback instead of waiting forever for getEditors().
+injectedQuery = null;
+const fallbackModel = {
+  isDisposed: () => false,
+  getValue: () => injectedQuery || "",
+  setValue: value => { injectedQuery = value; }
+};
+context.window = { monaco: { editor: { getModels: () => [fallbackModel] } } };
+capturedScript.func(...capturedScript.args);
+intervalCallbacks.at(-1)();
+assert.equal(injectedQuery, capturedScript.args[0], "Defender's getModels-only Monaco API must still inject KQL");
+
 localData.kqlTemplates = { ip: "DeviceNetworkEvents | where RemoteIP == 'IP_VALUE'" };
 injectedQuery = null;
 vm.runInContext(`injectKQLQuery(7, ${JSON.stringify(maliciousIoc)}, "ip")`, context);
@@ -133,5 +147,52 @@ assert.match(cyberChefUrl, /#recipe=Parse_User_Agent\(\)&input=/);
 assert.equal(decodeURIComponent(cyberChefUrl.split("&input=")[1]), Buffer.from(chromeUa).toString("base64"));
 assert.equal(fs.existsSync("vendor/ua-parser.min.js"), false);
 assert.equal(fs.existsSync("useragent.html"), false);
+
+// Reloading or updating an unpacked extension invalidates content scripts
+// that are still attached to existing tabs. A later selection must make the
+// stale script stop quietly rather than throwing from chrome.runtime.getURL().
+const staleDocumentListeners = {};
+const staleWindowListeners = {};
+let staleCreateAttempts = 0;
+class MockHTMLElement {}
+const staleRuntime = {
+  get id() { throw new Error("Extension context invalidated."); },
+  getURL: () => { throw new Error("Extension context invalidated."); },
+  sendMessage: () => { throw new Error("Extension context invalidated."); },
+  onMessage: { addListener() {} }
+};
+const staleContentContext = vm.createContext({
+  chrome: {
+    runtime: staleRuntime,
+    storage: {
+      local: { get: (_key, callback) => callback({}) },
+      onChanged: { addListener() {} }
+    }
+  },
+  console,
+  URL,
+  HTMLElement: MockHTMLElement,
+  MutationObserver: class { observe() {} },
+  document: {
+    documentElement: new MockHTMLElement(),
+    createElement: () => { staleCreateAttempts++; throw new Error("stale context must not create UI"); },
+    addEventListener: (name, callback) => { staleDocumentListeners[name] = callback; }
+  },
+  window: {
+    innerWidth: 1200,
+    innerHeight: 800,
+    addEventListener: (name, callback) => { staleWindowListeners[name] = callback; },
+    getSelection: () => ({
+      toString: () => "203.0.113.5",
+      rangeCount: 1,
+      getRangeAt: () => ({ getBoundingClientRect: () => ({ left: 10, right: 80, top: 10, bottom: 25, width: 70, height: 15 }) })
+    })
+  },
+  setTimeout: callback => { callback(); return 1; },
+  clearTimeout() {}
+});
+vm.runInContext(fs.readFileSync("content.js", "utf8"), staleContentContext, { filename: "content.js" });
+assert.doesNotThrow(() => staleDocumentListeners.mouseup({ button: 0, target: null }));
+assert.equal(staleCreateAttempts, 0, "an invalidated content script must not recreate the RAIN overlay");
 
 console.log("RAIN smoke tests passed");

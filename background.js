@@ -553,7 +553,8 @@ function injectKQLQuery(tabId, ioc, category, onScheduled) {
         func: (queryValue) => {
           let attempts = 0;
           const interval = setInterval(() => {
-            const editors = window.monaco?.editor?.getEditors?.() || [];
+            const editorApi = window.monaco?.editor;
+            const editors = editorApi?.getEditors?.() || [];
             const focused = editors.find(editor => editor.hasTextFocus?.());
             const visible = editors.filter(editor => {
               const node = editor.getDomNode?.();
@@ -562,7 +563,11 @@ function injectKQLQuery(tabId, ioc, category, onScheduled) {
             const editor = focused ||
               (visible.length === 1 ? visible[0] : null) ||
               (editors.length === 1 ? editors[0] : null);
-            const model = editor?.getModel?.();
+            const liveModels = (editorApi?.getModels?.() || []).filter(model => !model.isDisposed?.());
+            // Older Monaco builds used by some Defender tenants expose models
+            // but not getEditors(). Fall back only when the target is
+            // unambiguous; never pick an arbitrary model from a larger set.
+            const model = editor?.getModel?.() || (liveModels.length === 1 ? liveModels[0] : null);
             if (model) {
               model.setValue(queryValue);
               console.log("RAIN: KQL query injected successfully.");
