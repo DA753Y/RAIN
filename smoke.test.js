@@ -22,7 +22,10 @@ const chrome = {
   contextMenus: { onClicked: event("context-clicked") },
   commands: { onCommand: event("command") },
   storage: {
-    local: { get: (_key, callback) => callback(localData) },
+    local: {
+      get: (_key, callback) => callback(localData),
+      set: (values, callback) => { Object.assign(localData, values); if (callback) callback(); }
+    },
     session: {
       get: (key, callback) => callback({ [key]: sessionData[key] }),
       set: (values, callback) => { Object.assign(sessionData, values); if (callback) callback(); },
@@ -83,7 +86,7 @@ const safeCustomQuery = vm.runInContext(
 );
 assert.equal(
   safeCustomQuery,
-  `let __RAIN_IOC_VALUE = "x' or 1 == 1 or RemoteIP == 'x";\nDeviceNetworkEvents | where RemoteIP == __RAIN_IOC_VALUE`
+  `let RAIN_IOC_VALUE = "x' or 1 == 1 or RemoteIP == 'x";\nDeviceNetworkEvents | where RemoteIP == RAIN_IOC_VALUE`
 );
 assert.throws(() => vm.runInContext(
   `renderKqlTemplate(${JSON.stringify('print value = "prefix IP_VALUE suffix"')}, "test")`,
@@ -139,6 +142,48 @@ assert.equal(capturedScript.args[0], safeCustomQuery);
 capturedScript.func(...capturedScript.args);
 intervalCallbacks.at(-1)();
 assert.equal(injectedQuery, safeCustomQuery, "the real injection path must keep the IOC inside one KQL literal");
+delete localData.kqlTemplates;
+
+// Saving and hunting use the same validation/persistence path. This mirrors the
+// edited IP template from the reported regression and proves its custom lines
+// survive all the way into the query sent to Defender.
+const screenshotTemplate = `// RAIN Hunt: IP Address
+// This is a test
+let IOC = "IP_VALUE";
+DeviceNetworkEvents
+| where RemoteIP == IOC or LocalIP == IOC
+| project Timestamp, DeviceName, ActionType, LocalIP, RemoteIP, RemotePort, RemoteUrl, InitiatingProcessFileName
+| sort by Timestamp desc | take 100
+// beep boop`;
+const templatesToSave = JSON.parse(vm.runInContext("JSON.stringify(kqlTemplates)", context));
+templatesToSave.ip = screenshotTemplate;
+let saveResponse;
+const keepsSaveChannelOpen = listeners.message(
+  { action: "saveKqlTemplates", templates: templatesToSave },
+  {},
+  response => { saveResponse = response; }
+);
+assert.equal(keepsSaveChannelOpen, true);
+assert.equal(saveResponse.ok, true);
+assert.equal(localData.kqlTemplates.ip, screenshotTemplate);
+assert.equal(localData.templatesVersion, vm.runInContext("TEMPLATE_SCHEMA_VERSION", context));
+
+vm.runInContext(`injectKQLQuery(7, "159.196.14.111", "ip")`, context);
+assert.match(capturedScript.args[0], /\/\/ This is a test/);
+assert.match(capturedScript.args[0], /\/\/ beep boop/);
+assert.match(capturedScript.args[0], /^let RAIN_IOC_VALUE = "159\.196\.14\.111";/);
+assert.doesNotMatch(capturedScript.args[0], /__RAIN_IOC_VALUE/);
+
+let rejectedSaveResponse;
+const invalidTemplates = { ...templatesToSave, ip: "DeviceNetworkEvents | take 1" };
+listeners.message(
+  { action: "saveKqlTemplates", templates: invalidTemplates },
+  {},
+  response => { rejectedSaveResponse = response; }
+);
+assert.equal(rejectedSaveResponse.ok, false);
+assert.match(rejectedSaveResponse.error, /IP Address template/);
+assert.equal(localData.kqlTemplates.ip, screenshotTemplate, "a rejected save must not replace the last working templates");
 delete localData.kqlTemplates;
 
 // A legacy saved template without a placeholder cannot inject a stale,

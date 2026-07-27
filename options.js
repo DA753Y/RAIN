@@ -42,8 +42,15 @@ function saveTemplates() {
     useragent: textareaUserAgent.value
   };
 
-  chrome.storage.local.set({ kqlTemplates: customTemplates }, () => {
-    showToast(saveToast);
+  chrome.runtime.sendMessage({ action: "saveKqlTemplates", templates: customTemplates }, (response) => {
+    const runtimeError = chrome.runtime.lastError;
+    if (runtimeError || !response?.ok) {
+      const message = runtimeError?.message || response?.error || "Templates could not be saved.";
+      console.error("RAIN: Failed to save KQL templates:", message);
+      showSaveToast(message, true);
+      return;
+    }
+    showSaveToast("Custom templates saved successfully.");
   });
 }
 
@@ -139,6 +146,14 @@ function showToast(toastEl) {
     toastTimeouts.delete(toastEl);
   }, 3000);
   toastTimeouts.set(toastEl, timeoutId);
+}
+
+function showSaveToast(message, isError = false) {
+  saveToast.classList.toggle("toast-success", !isError);
+  saveToast.classList.toggle("toast-error", isError);
+  const messageEl = saveToast.querySelector(".toast-message");
+  if (messageEl) messageEl.textContent = message;
+  showToast(saveToast);
 }
 
 function faviconUrl(pageUrl) {
