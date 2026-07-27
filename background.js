@@ -254,7 +254,7 @@ const huntingTools = {
 const YEET_CATEGORIES = ["ip", "domain", "hash", "cve"];
 const AHQ_PENDING_TTL_MS = 10 * 60 * 1000;
 const KQL_PLACEHOLDER_SOURCE = "IP_VALUE|DOMAIN_VALUE|HASH_VALUE|ACCOUNT_VALUE|CVE_VALUE|USERAGENT_VALUE";
-const KQL_IOC_VARIABLE = "__RAIN_IOC_VALUE";
+const KQL_IOC_VARIABLE = "RAIN_IOC_VALUE";
 
 const knownUserAgentPattern = /^(?:Mozilla|Opera|Dalvik|curl|Wget|PostmanRuntime|python-requests|Go-http-client|Java|okhttp|Googlebot|bingbot|DuckDuckBot|YandexBot|facebookexternalhit|Slackbot(?:-LinkExpanding)?|Discordbot|TelegramBot|Amazonbot|Applebot)\/[^\s]+(?:\s|$)/i;
 const genericUserAgentPattern = /^[a-z][a-z0-9._-]*\/[^\s()]+(?:\s+\([^)]*\)|\s+[a-z][a-z0-9._-]*\/[^\s()]+)+/i;
@@ -405,6 +405,49 @@ function renderKqlTemplate(template, ioc) {
     return KQL_IOC_VARIABLE;
   });
   return `let ${KQL_IOC_VARIABLE} = ${literal};\n${rendered}`;
+}
+
+function validateKqlTemplates(templates) {
+  if (!templates || typeof templates !== "object" || Array.isArray(templates)) {
+    throw new TypeError("KQL templates must be an object.");
+  }
+
+  const validated = {};
+  for (const category of Object.keys(kqlTemplates)) {
+    const template = templates[category];
+    if (typeof template !== "string" || !template.trim()) {
+      throw new Error(`${categoryLabels[category]} template cannot be empty.`);
+    }
+    try {
+      renderKqlTemplate(template, "RAIN_TEMPLATE_VALIDATION");
+    } catch (error) {
+      throw new Error(`${categoryLabels[category]} template: ${error.message}`);
+    }
+    validated[category] = template;
+  }
+  return validated;
+}
+
+function saveKqlTemplates(templates, sendResponse) {
+  let validated;
+  try {
+    validated = validateKqlTemplates(templates);
+  } catch (error) {
+    sendResponse({ ok: false, error: error.message });
+    return;
+  }
+
+  chrome.storage.local.set({
+    kqlTemplates: validated,
+    templatesVersion: TEMPLATE_SCHEMA_VERSION
+  }, () => {
+    const error = chrome.runtime.lastError;
+    if (error) {
+      sendResponse({ ok: false, error: error.message || "Template storage failed." });
+      return;
+    }
+    sendResponse({ ok: true });
+  });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -739,6 +782,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ defaultTemplates: kqlTemplates });
       break;
 
+    case "saveKqlTemplates":
+      saveKqlTemplates(message.templates, sendResponse);
+      return true;
+
     case "classify": {
       const ioc = cleanIOC(message.text || "");
       const detected = classifyIOC(ioc);
@@ -779,7 +826,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       createTabSafely({ url: "chrome://extensions/shortcuts" });
       break;
   }
-  // All responses above are synchronous; no open channel is kept.
+  // Only template persistence keeps the response channel open.
+  return false;
 });
 
 function pendingPanelKey(windowId) {
