@@ -87,6 +87,11 @@ const categoryShortLabels = {
 const huntingTools = {
   ip: [
     {
+      id: "hunt-ip-whatismyipaddress",
+      title: "Hunt in WhatIsMyIpAddress",
+      url: "https://whatismyipaddress.com/ip/"
+    },
+    {
       id: "hunt-ip-talos",
       title: "Hunt in Talos",
       url: "https://talosintelligence.com/reputation_center/lookup?search="
@@ -123,6 +128,11 @@ const huntingTools = {
     }
   ],
   domain: [
+    {
+      id: "hunt-domain-securityheaders",
+      title: "Hunt in Security Headers",
+      url: "https://securityheaders.com/?q="
+    },
     {
       id: "hunt-domain-vt",
       title: "Hunt in VirusTotal",
