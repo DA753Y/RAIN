@@ -870,7 +870,24 @@ function openHuntPanel(tabId, windowId, ioc) {
 // portals like Microsoft Defender rely on for much of their UI.
 function readSelectionDeep() {
   const sel = window.getSelection && String(window.getSelection());
-  if (sel && sel.trim()) return sel;
+  if (sel && sel.trim()) {
+    const sel2 = String(sel).trim();
+    //Check if selection is inside a hyperlink
+    if (sel.rangeCount > 0 {
+      let node = sel.anchorNode;
+      if (node && node.nodeType === Node.TEXT_NODE){
+        node = node.parentElement;
+      }
+      if (node && node.closest) {
+        const link = node.closest("a");
+        if (link && link.href){
+          return link.href;
+        }
+      }
+    }
+  } else {
+  return sel;
+  }
 
   const el = document.activeElement;
   try {
