@@ -869,24 +869,27 @@ function openHuntPanel(tabId, windowId, ioc) {
 // selections via the Chromium-specific ShadowRoot.getSelection(), which
 // portals like Microsoft Defender rely on for much of their UI.
 function readSelectionDeep() {
-  const sel = window.getSelection && String(window.getSelection());
-  if (sel && sel.trim()) {
+  const sel = window.getSelection && window.getSelection();
+  if (sel && String(sel).trim()) {
     const sel2 = String(sel).trim();
-    //Check if selection is inside a hyperlink
-    if (sel.rangeCount > 0 {
+    // Check if selection is inside a hyperlink
+    if (sel.rangeCount > 0) {
       let node = sel.anchorNode;
-      if (node && node.nodeType === Node.TEXT_NODE){
+      if (node && node.nodeType === Node.TEXT_NODE) {
         node = node.parentElement;
       }
       if (node && node.closest) {
         const link = node.closest("a");
-        if (link && link.href){
+
+        if (link && link.href) {
           return link.href;
         }
       }
     }
+    // No hyperlink, return highlighted text
+    return sel2;
   } else {
-  return sel;
+    return "";
   }
 
   const el = document.activeElement;
